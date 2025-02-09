@@ -20,8 +20,8 @@ The project includes an AI agent that can perform tasks using browser automation
 1. Install Python dependencies and playwright:
 ```bash
 cd agent
-virtualenv .venv
-source .venv/bin/activate
+# virtualenv .venv
+# source .venv/bin/activate
 pip install -r requirements.txt
 playwright install
 ```
