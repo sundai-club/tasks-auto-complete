@@ -14,7 +14,7 @@ type EngineeringLog = z.infer<typeof engineeringLog>;
 
 async function generateEngineeringLog(
     screenData: ContentItem[],
-): Promise<EngineeringLog> {    
+): Promise<EngineeringLog> {
     const filteredBrowserOnly = screenData.filter((item) => {
         return (item.type == 'OCR' || item.type == 'UI') && (item.content.appName === "Chrome" || item.content.appName === "Firefox");
     });
@@ -88,7 +88,7 @@ async function streamEngineeringLogsToMarkdown(): Promise<void> {
     pipe.inbox.send({
         title: "engineering log stream started",
         body: `monitoring engineering work every ${config.interval} seconds`,
-    });    
+    });
 
     let logEntries: EngineeringLog[] = [];
 
@@ -153,6 +153,7 @@ async function maybeProposeAgentAction(logEntry: EngineeringLog[]): Promise<Stri
     });
 
     console.log("ai answer:", response);
+    console.log("TASK: ", response.object.content);
 
     return response.object.content;
 }
@@ -164,24 +165,18 @@ streamEngineeringLogsToMarkdown();
 
 Instructions to run this pipe:
 
-1. install screenpipe and git clone this repo
-    ```
-    git clone https://github.com/mediar-ai/screenpipe.git
-    cd screenpipe
-    ```
-
-2. install dependencies:
+1. install dependencies:
     ```
     cd pipe/tasks-auto-complete
     npm i ai @ai-sdk/openai @screenpipe/js zod
     ```
 
-3. set environment variables:
+2. set environment variables:
    ```
    export OPENAI_API_KEY=your_openai_api_key
    ```
 
-4. run the pipe:
+3. run the pipe:
    ```
    screenpipe pipe install pipe/tasks-auto-complete
    screenpipe pipe enable tasks-auto-complete

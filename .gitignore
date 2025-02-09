@@ -1,6 +1,11 @@
 # Virtual environment Python
 venv
 .venv
+.DS_Store
+recordings
+
+# Recordings directory
+recordings/
 
 # Logs
 logs

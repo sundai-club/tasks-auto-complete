@@ -4,12 +4,18 @@ AI brain that knows everything you're doing on your laptop, and auto completes y
 
 # Installation
 
+Clone the repository:
+```bash
+git clone https://github.com/mediar-ai/tasks-auto-complete
+cd tasks-auto-complete
+```
+
 ## Screenpipe
 
 1. Install screenpipe https://docs.screenpi.pe/docs/getting-started (https://github.com/mediar-ai/screenpipe)
 2. Install and enable our pipe
 ```
-screenpipe pipe download https://github.com/sundai-club/tasks-auto-complete/tree/main/pipe/tasks-auto-complete
+screenpipe pipe install pipe/tasks-auto-complete
 screenpipe pipe enable tasks-auto-complete
 ```
 
@@ -20,8 +26,8 @@ The project includes an AI agent that can perform tasks using browser automation
 1. Install Python dependencies and playwright:
 ```bash
 cd agent
-virtualenv .venv
-source .venv/bin/activate
+# virtualenv .venv
+# source .venv/bin/activate
 pip install -r requirements.txt
 playwright install
 ```
