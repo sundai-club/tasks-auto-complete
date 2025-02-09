@@ -72,95 +72,15 @@ app.on('window-all-closed', function () {
 // Handle saving API key
 ipcMain.handle('save-api-key', async (event, key) => {
   try {
-    const settingsPath = path.join(app.getPath('userData'), 'settings.json')
+    const settingsPath = path.join(__dirname, 'settings.json')
     const settings = {
       apiKey: key,
       timestamp: new Date().toISOString()
     }
     fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2))
-    console.log('API key saved to:', settingsPath)
     return { success: true }
   } catch (error) {
     console.error('Error saving API key:', error)
-    return { success: false, error: error.message }
-  }
-})
-
-// Handle running the Python assistant
-ipcMain.handle('run-assistant', async (event, taskDescription) => {
-  try {
-    const settingsPath = path.join(app.getPath('userData'), 'settings.json')
-    if (!fs.existsSync(settingsPath)) {
-      throw new Error('OpenAI API key not found. Please add your API key in the Settings tab.')
-    }
-
-    const settings = JSON.parse(fs.readFileSync(settingsPath, 'utf8'))
-    const apiKey = settings.apiKey
-
-    if (!apiKey || !apiKey.startsWith('sk-')) {
-      throw new Error('Invalid OpenAI API key format. Please check your API key in the Settings tab.')
-    }
-
-    // Path to the Python script and virtual environment
-    const agentDir = path.join(__dirname, '..', 'agent')
-    const pythonScript = path.join(agentDir, 'assistant.py')
-    const venvPython = path.join(agentDir, '.venv', 'bin', 'python')
-    
-    // Verify paths exist
-    if (!fs.existsSync(pythonScript)) {
-      throw new Error('Assistant script not found. Please ensure the agent directory is properly set up.')
-    }
-    if (!fs.existsSync(venvPython)) {
-      throw new Error('Python virtual environment not found. Please run setup instructions from the README.')
-    }
-
-    console.log('Running assistant with task:', taskDescription)
-    
-    // Escape the task description for command line
-    const escapedTask = JSON.stringify(taskDescription)
-    
-    const pythonProcess = spawn(venvPython, [
-      pythonScript,
-      apiKey,
-      escapedTask
-    ], {
-      env: { ...process.env },
-      cwd: agentDir  // Set working directory to agent folder
-    })
-
-    let output = ''
-    let error = ''
-
-    pythonProcess.stdout.on('data', (data) => {
-      const text = data.toString()
-      output += text
-      console.log('Python output:', text)
-    })
-
-    pythonProcess.stderr.on('data', (data) => {
-      const text = data.toString()
-      error += text
-      console.error('Python error:', text)
-    })
-
-    return new Promise((resolve, reject) => {
-      pythonProcess.on('close', (code) => {
-        if (code === 0) {
-          resolve({ success: true, output })
-        } else {
-          // Check for specific error types
-          if (error.includes('invalid_api_key')) {
-            reject(new Error('Invalid OpenAI API key. Please check your API key in the Settings tab.'))
-          } else if (error.includes('No module named')) {
-            reject(new Error('Missing Python dependencies. Please run: pip install -r requirements.txt in the agent directory.'))
-          } else {
-            reject(new Error(error || 'Assistant failed to run'))
-          }
-        }
-      })
-    })
-  } catch (error) {
-    console.error('Error running assistant:', error)
     return { success: false, error: error.message }
   }
 })
@@ -169,38 +89,17 @@ ipcMain.handle('run-assistant', async (event, taskDescription) => {
 ipcMain.handle('stop-screenpipe', async () => {
   if (screenpipeProcess) {
     try {
-      // Check if process is still running
-      try {
-        process.kill(screenpipeProcess.pid, 0) // Test if process exists
-      } catch (e) {
-        if (e.code === 'ESRCH') {
-          console.log('Process already terminated')
-          screenpipeProcess = null
-          return { success: true }
-        }
-      }
-
-      // Process exists, try to terminate it gracefully
       process.kill(screenpipeProcess.pid, 'SIGTERM')
       await new Promise(resolve => setTimeout(resolve, 2000))
       
-      // Check if it's still running after SIGTERM
-      try {
-        process.kill(screenpipeProcess.pid, 0)
-        // If we get here, process is still running, force kill it
+      if (screenpipeProcess.exitCode === null) {
         process.kill(screenpipeProcess.pid, 'SIGKILL')
-      } catch (e) {
-        if (e.code !== 'ESRCH') {
-          throw e // Only throw if it's not a "no such process" error
-        }
       }
       
       console.log('Screenpipe stopped successfully, data saved to:', recordingsPath)
-      screenpipeProcess = null
       return { success: true }
     } catch (error) {
       console.error('Error stopping screenpipe:', error)
-      screenpipeProcess = null // Reset the process reference
       return { success: false, error: error.message }
     }
   }
@@ -214,39 +113,22 @@ ipcMain.handle('start-screenpipe', async () => {
       return { success: false, error: 'Recording already in progress' }
     }
 
-    // Check if screenpipe is installed
-    try {
-      await new Promise((resolve, reject) => {
-        const check = spawn('screenpipe', ['--version'], { shell: true })
-        check.on('error', reject)
-        check.on('close', code => {
-          if (code === 0) resolve()
-          else reject(new Error('Screenpipe check failed'))
-        })
-      })
-    } catch (error) {
-      throw new Error('Screenpipe is not installed.')
-    }
-
     // Ensure recordings directory exists
     if (!fs.existsSync(recordingsPath)) {
       fs.mkdirSync(recordingsPath, { recursive: true })
     }
 
-    // Find screenpipe in PATH
-    const screenpipePath = 'screenpipe'
+    // Use full path to screenpipe
+    const screenpipePath = '/Users/georgina/.local/bin/screenpipe'
 
     // Start screenpipe process with correct options
     screenpipeProcess = spawn(screenpipePath, [
       '--data-dir', recordingsPath,
       '--fps', '1',
       '--enable-frame-cache',
-      '--use-all-monitors',
-      '--enable-ui-monitoring',  // Enable UI monitoring for task detection
-      '--enable-llm'            // Enable LLM for task analysis
+      '--use-all-monitors'
     ], {
-      env: { ...process.env },
-      shell: true  // This helps find the command in PATH
+      env: { ...process.env, PATH: process.env.PATH + ':/Users/georgina/.local/bin' }
     })
 
     let startupError = ''

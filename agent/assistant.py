@@ -1,5 +1,6 @@
 import os
 import sys
+import json
 
 from langchain_openai import ChatOpenAI
 from browser_use import Agent
@@ -16,6 +17,8 @@ def get_args():
 async def main():
     openai_api_key, task_description = get_args()
     os.environ["OPENAI_API_KEY"] = openai_api_key
+    
+    print(f"Starting task: {task_description}")
     
     agent = Agent(
         task=task_description,

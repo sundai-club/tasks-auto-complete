@@ -4,6 +4,9 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 package-lock.json
+.venv/
+*/.venv/
+agent/.venv/
 
 # Environment and secrets
 .env
@@ -23,6 +26,9 @@ recordings/*.db
 recordings/*.db-*
 recordings/*.shm
 recordings/*.wal
+
+# Generated files
+**/agent_history.gif
 
 # OS files
 .DS_Store
