@@ -1,5 +1,3 @@
-import * as fs from "fs/promises";
-import * as path from "path";
 import { z } from "zod";
 import { generateObject } from "ai";
 import { createOpenAI } from "@ai-sdk/openai";
@@ -61,7 +59,6 @@ async function generateEngineeringLog(
  ]
   Analyze the screen data and provide only the most recent messages matching these criteria.`;
 
-    // const provider = createOllama({ baseURL: ollamaApiUrl });
     const provider = createOpenAI({
         apiKey: process.env.OPENAI_API_KEY,
     })("gpt-4o");
@@ -173,25 +170,21 @@ Instructions to run this pipe:
     cd screenpipe
     ```
 
-2. install and run ollama:
-   - follow instructions at https://github.com/jmorganca/ollama
-   - run `ollama run phi3.5:3.8b-mini-instruct-q4_K_M`
+2. install dependencies:
+    ```
+    cd pipe/tasks-auto-complete
+    npm i ai @ai-sdk/openai @screenpipe/js zod
+    ```
 
-3. set up notion:
-   - create a notion integration: https://www.notion.so/my-integrations - copy the API key
-   - create a database with properties: Title (text), Description (text), Tags (multi-select), Date (date)
-   - share database with your integration - copy the database ID eg https://www.notion.so/<THIS>?<NOTTHIS>
-
-4. set environment variables:
+3. set environment variables:
    ```
-   export SCREENPIPE_NOTION_API_KEY=your_notion_api_key
-   export SCREENPIPE_NOTION_DATABASE_ID=your_notion_database_id
+   export OPENAI_API_KEY=your_openai_api_key
    ```
 
-5. run the pipe:
+4. run the pipe:
    ```
-   screenpipe pipe download ./examples/typescript/pipe-screen-to-crm
-   screenpipe pipe enable screen-to-crm
+   screenpipe pipe install pipe/tasks-auto-complete
+   screenpipe pipe enable tasks-auto-complete
    screenpipe 
    ```
 
