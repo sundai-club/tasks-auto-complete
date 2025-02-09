@@ -14,7 +14,7 @@ type EngineeringLog = z.infer<typeof engineeringLog>;
 
 async function generateEngineeringLog(
     screenData: ContentItem[],
-): Promise<EngineeringLog> {    
+): Promise<EngineeringLog> {
     const filteredBrowserOnly = screenData.filter((item) => {
         return (item.type == 'OCR' || item.type == 'UI') && (item.content.appName === "Chrome" || item.content.appName === "Firefox");
     });
@@ -88,7 +88,7 @@ async function streamEngineeringLogsToMarkdown(): Promise<void> {
     pipe.inbox.send({
         title: "engineering log stream started",
         body: `monitoring engineering work every ${config.interval} seconds`,
-    });    
+    });
 
     let logEntries: EngineeringLog[] = [];
 
@@ -153,6 +153,7 @@ async function maybeProposeAgentAction(logEntry: EngineeringLog[]): Promise<Stri
     });
 
     console.log("ai answer:", response);
+    console.log("TASK: ", response.object.content);
 
     return response.object.content;
 }
