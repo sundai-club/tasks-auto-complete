@@ -1,9 +1,7 @@
-// import { Client } from "@notionhq/client";
 import * as fs from "fs/promises";
 import * as path from "path";
 import { z } from "zod";
 import { generateObject } from "ai";
-import { createOllama } from "ollama-ai-provider";
 import { createOpenAI } from "@ai-sdk/openai";
 import { pipe, ContentItem } from "@screenpipe/js";
 
@@ -18,43 +16,31 @@ type EngineeringLog = z.infer<typeof engineeringLog>;
 
 async function generateEngineeringLog(
     screenData: ContentItem[],
-    ollamaModel: string,
-    ollamaApiUrl: string
-): Promise<EngineeringLog> {
-    // const prompt = `Based on the following screen data, generate a concise engineering log entry:
-
-    //   ${JSON.stringify(screenData)}
-
-    //   Focus only on engineering work. Ignore non-work related activities.
-    //   Return a JSON object with the following structure:
-    //   {
-    //       "title": "Brief title of the engineering task",
-    //       "description": "Concise description of the engineering work done",
-    //       "tags": ["tag1", "tag2", "tag3"]
-    //   }
-    //   Provide 1-3 relevant tags related to the engineering work.`;
-    console.log("screen data:", JSON.stringify(screenData, null, 2));
+): Promise<EngineeringLog> {    
+    const filteredBrowserOnly = screenData.filter((item) => {
+        return (item.type == 'OCR' || item.type == 'UI') && (item.content.appName === "Chrome" || item.content.appName === "Firefox");
+    });
     const prompt = `You are provided with screen data extracted from various applications:
   <screen_data>
-  ${JSON.stringify(screenData)}
+  ${JSON.stringify(filteredBrowserOnly)}
   </screen_data>
   
-  Your task is to extract ONLY the most recent three messages from WhatsApp and Discord conversations. Ignore all other applications and content.
+  Your task is to extract only browser interactions and analyze if this user alrady performed silimar action in the past.
+  If they did, you should suggest the next action they should take.
   
   For each message found, generate a JSON object with this structure:
   
-  {
-    "platform": "whatsapp|discord",
-    "identifier": "Contact name or phone number",
-    "timestamp": "ISO timestamp of the message",
-    "content": "The actual message content"
+  {    
+    "platform": "whatsapp",
+    "identifier": "+1234567890",
+    "timestamp": "2024-03-21T15:30:00Z",
+    "content": "See you tomorrow at the meeting"
   }
+
+  the action is the detailed step by step plan to perform this action.
   
   **Important Rules**:
-  - Only process WhatsApp and Discord messages
-  - Only capture the most recent message from each conversation
-  - For WhatsApp, use phone numbers as identifier when available
-  - For Discord, use the username/handle as identifier
+  - Only process Browser interactions
   - Ensure timestamps are in ISO format
   - Exclude any non-messaging content
   
@@ -91,183 +77,87 @@ async function generateEngineeringLog(
     return response.object;
 }
 
-// async function syncLogToNotion(
-//   logEntry: EngineeringLog,
-//   notion: Client,
-//   databaseId: string
-// ): Promise<void> {
-//   try {
-//     console.log("syncLogToNotion", logEntry);
-//     await notion.pages.create({
-//       parent: { database_id: databaseId },
-//       properties: {
-//         Title: { title: [{ text: { content: logEntry.title } }] },
-//         Description: {
-//           rich_text: [{ text: { content: logEntry.description } }],
-//         },
-//         Tags: { multi_select: logEntry.tags.map((tag) => ({ name: tag })) },
-//         Date: { date: { start: new Date().toISOString() } },
-//       },
-//     });
 
-//     console.log("engineering log synced to notion successfully");
-
-//     // Create markdown table for inbox
-//     const markdownTable = `
-// | Title | Description | Tags |
-// |-------|-------------|------|
-// | ${logEntry.title} | ${logEntry.description} | ${logEntry.tags.join(", ")} |
-//     `.trim();
-
-//     await pipe.inbox.send({
-//       title: "engineering log synced",
-//       body: `new engineering log entry:\n\n${markdownTable}`,
-//     });
-//   } catch (error) {
-//     console.error("error syncing engineering log to notion:", error);
-//     await pipe.inbox.send({
-//       title: "engineering log error",
-//       body: `error syncing engineering log to notion: ${error}`,
-//     });
-//   }
-// }
-async function writeLogToMarkdown(logEntry: EngineeringLog): Promise<void> {
-    try {
-        const outputDir = "./engineering-logs";
-        const fileName = `log-${new Date().toISOString().split('T')[0]}.md`;
-        const filePath = path.join(outputDir, fileName);
-
-        // Create directory if it doesn't exist
-        await fs.mkdir(outputDir, { recursive: true });
-
-        const jsonContent = JSON.stringify(logEntry, null, 2);
-        const content = `\n${jsonContent}\n\n---\n`;
-
-        // Append to file
-        await fs.appendFile(filePath, content, "utf-8");
-
-        console.log("engineering log written to markdown file:", filePath);
-
-        await pipe.inbox.send({
-            title: "engineering log saved",
-            body: `new engineering log entry saved to ${filePath}`,
-        });
-    } catch (error) {
-        console.error("error writing engineering log to markdown:", error);
-        await pipe.inbox.send({
-            title: "engineering log error",
-            body: `error writing engineering log to markdown: ${error}`,
-        });
-    }
-}
-
-
-// function streamEngineeringLogsToNotion(): void {
-//   console.log("starting engineering logs stream to notion");
-
-//   const config = pipe.loadPipeConfig();
-//   console.log("loaded config:", JSON.stringify(config, null, 2));
-
-//   const interval = config.interval * 1000;
-//   const databaseId = config.notionDatabaseId;
-//   const apiKey = config.notionApiKey;
-//   const ollamaApiUrl = config.ollamaApiUrl;
-//   const ollamaModel = config.ollamaModel;
-
-//   const notion = new Client({ auth: apiKey });
-
-//   pipe.inbox.send({
-//     title: "engineering log stream started",
-//     body: `monitoring engineering work every ${config.interval} seconds`,
-//   });
-
-//   pipe.scheduler
-//     .task("generateEngineeringLog")
-//     .every(interval)
-//     .do(async () => {
-//       try {
-//         const now = new Date();
-//         const oneHourAgo = new Date(now.getTime() - interval);
-
-//         const screenData = await pipe.queryScreenpipe({
-//           startTime: oneHourAgo.toISOString(),
-//           endTime: now.toISOString(),
-//           limit: 50,
-//           contentType: "ocr",
-//         });
-
-//         if (screenData && screenData.data.length > 0) {
-//           const logEntry = await generateEngineeringLog(
-//             screenData.data,
-//             ollamaModel,
-//             ollamaApiUrl
-//           );
-//           await syncLogToNotion(logEntry, notion, databaseId);
-//         } else {
-//           console.log("no relevant engineering work detected in the last hour");
-//         }
-//       } catch (error) {
-//         console.error("error in engineering log pipeline:", error);
-//         await pipe.inbox.send({
-//           title: "engineering log error",
-//           body: `error in engineering log pipeline: ${error}`,
-//         });
-//       }
-//     });
-
-//   pipe.scheduler.start();
-// }
-
-function streamEngineeringLogsToMarkdown(): void {
+async function streamEngineeringLogsToMarkdown(): Promise<void> {
     console.log("starting engineering logs stream to markdown");
 
-    const config = pipe.loadPipeConfig();
+    const config = {
+        interval: 60,
+    }
     console.log("loaded config:", JSON.stringify(config, null, 2));
 
     const interval = config.interval * 1000;
-    const ollamaApiUrl = config.ollamaApiUrl;
-    const ollamaModel = config.ollamaModel;
 
     pipe.inbox.send({
         title: "engineering log stream started",
         body: `monitoring engineering work every ${config.interval} seconds`,
+    });    
+
+    let logEntries: EngineeringLog[] = [];
+
+    while (true) {
+        try {
+            const now = new Date();
+            const oneHourAgo = new Date(now.getTime() - interval);
+
+            const screenData = await pipe.queryScreenpipe({
+                startTime: oneHourAgo.toISOString(),
+                endTime: now.toISOString(),
+                limit: 50,
+                contentType: "ocr",
+            });
+
+            if (screenData && screenData.data.length > 0) {
+                const logEntry = await generateEngineeringLog(
+                    screenData.data
+                );
+                console.log("engineering log entry:", logEntry);
+                logEntries.push(logEntry);
+                await maybeProposeAgentAction(logEntries);
+            } else {
+                console.log("no relevant engineering work detected in the last hour");
+            }
+        } catch (error) {
+            console.error("error in engineering log pipeline:", error);
+            await pipe.inbox.send({
+                title: "engineering log error",
+                body: `error in engineering log pipeline: ${error}`,
+            });
+        }
+
+        await new Promise((resolve) => setTimeout(resolve, interval));
+    }
+}
+
+
+async function maybeProposeAgentAction(logEntry: EngineeringLog[]): Promise<String | undefined> {
+    console.log("proposing agent action for log entry:", logEntry);
+
+    const prompt = `
+    You are provided with an engineering log entries    
+    ${JSON.stringify(logEntry)}
+
+    Your task is to analyze the log entries and propose the next action that the user should take.
+    The action is the detailed step by step plan to perform this action.
+
+    **Example Output**:
+    "The user should click on the 'Confirm' button to complete the transaction."
+    `;
+
+
+    const provider = createOpenAI({
+        apiKey: process.env.OPENAI_API_KEY,
+    })("gpt-4o");
+
+    const response = await generateObject({
+        model: provider,
+        messages: [{ role: "user", content: prompt }],
+        schema: engineeringLog,
     });
 
-    pipe.scheduler
-        .task("generateEngineeringLog")
-        .every(interval)
-        .do(async () => {
-            try {
-                const now = new Date();
-                const oneHourAgo = new Date(now.getTime() - interval);
+    console.log("ai answer:", response);
 
-                const screenData = await pipe.queryScreenpipe({
-                    startTime: oneHourAgo.toISOString(),
-                    endTime: now.toISOString(),
-                    limit: 50,
-                    contentType: "ocr",
-                });
-
-                if (screenData && screenData.data.length > 0) {
-                    const logEntry = await generateEngineeringLog(
-                        screenData.data,
-                        ollamaModel,
-                        ollamaApiUrl
-                    );
-                    await writeLogToMarkdown(logEntry);
-                } else {
-                    console.log("no relevant engineering work detected in the last hour");
-                }
-            } catch (error) {
-                console.error("error in engineering log pipeline:", error);
-                await pipe.inbox.send({
-                    title: "engineering log error",
-                    body: `error in engineering log pipeline: ${error}`,
-                });
-            }
-        });
-
-    pipe.scheduler.start();
+    return response.object.content;
 }
 
 
