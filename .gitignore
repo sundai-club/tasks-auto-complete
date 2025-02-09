@@ -1,3 +1,7 @@
+# Virtual environment Python
+venv
+.venv
+
 # Logs
 logs
 *.log

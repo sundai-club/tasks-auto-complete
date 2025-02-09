@@ -13,6 +13,19 @@ screenpipe pipe download https://github.com/sundai-club/tasks-auto-complete/tree
 screenpipe pipe enable tasks-auto-complete
 ```
 
+## AI Agent
+
+The project includes an AI agent that can perform tasks using browser automation. The agent uses the `browser-use` package to interact with web browsers programmatically.
+
+1. Install Python dependencies and playwright:
+```bash
+cd agent
+virtualenv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+playwright install
+```
+
 ## Electron app
 
 This project is built on Electron, providing a desktop application that integrates with your system.
@@ -25,19 +38,3 @@ npm install
 # Run the app
 npm start
 ```
-
-### Development
-
-This application is based on Electron and includes the following key files:
-
-- `package.json` - Points to the app's main file and lists its details and dependencies.
-- `main.js` - Starts the app and creates a browser window to render HTML. This is the app's **main process**.
-- `index.html` - A web page to render. This is the app's **renderer process**.
-- `preload.js` - A content script that runs before the renderer process loads.
-
-### Resources
-
-- [electronjs.org/docs](https://electronjs.org/docs) - Electron documentation
-- [Electron Fiddle](https://electronjs.org/fiddle) - Test small Electron experiments
-
-
