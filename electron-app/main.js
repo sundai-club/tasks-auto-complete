@@ -147,7 +147,9 @@ ipcMain.handle('start-screenpipe', async () => {
       '--data-dir', recordingsPath,
       '--fps', '1',
       '--enable-frame-cache',
-      '--use-all-monitors'
+      '--use-all-monitors',
+      '--enable-ui-monitoring',  // Enable UI monitoring for task detection
+      '--enable-llm'            // Enable LLM for task analysis
     ], {
       env: { ...process.env, PATH: process.env.PATH + ':/Users/georgina/.local/bin' }
     })
