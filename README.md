@@ -19,6 +19,7 @@ This project is built on Electron, providing a desktop application that integrat
 
 1. Install dependencies and run the electron app:
 ```bash
+cd electron-app
 # Install dependencies
 npm install
 # Run the app
