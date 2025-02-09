@@ -2,8 +2,6 @@
 
 AI brain that knows everything you're doing on your laptop, and auto completes your routine tasks
 
-This project is built on Electron, providing a desktop application that integrates with your system.
-
 # Installation
 
 ## Screenpipe
@@ -11,11 +9,13 @@ This project is built on Electron, providing a desktop application that integrat
 1. Install screenpipe https://docs.screenpi.pe/docs/getting-started (https://github.com/mediar-ai/screenpipe)
 2. Install and enable our pipe
 ```
-screenpipe pipe download https://github.com/sundai-club/tasks-auto-complete/tree/main/pipe
+screenpipe pipe download https://github.com/sundai-club/tasks-auto-complete/tree/main/pipe/tasks-auto-complete
 screenpipe pipe enable tasks-auto-complete
 ```
 
 ## Electron app
+
+This project is built on Electron, providing a desktop application that integrates with your system.
 
 1. Install dependencies and run the electron app:
 ```bash
