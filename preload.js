@@ -16,3 +16,9 @@ window.addEventListener('DOMContentLoaded', () => {
     replaceText(`${type}-version`, process.versions[type])
   }
 })
+
+
+//start button for screenpipe
+
+//pipe to detect when we can help user 
+//accept what agent sugegests 
