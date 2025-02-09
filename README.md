@@ -6,18 +6,26 @@ This project is built on Electron, providing a desktop application that integrat
 
 # Installation
 
-1. Install screenpipe https://github.com/mediar-ai/screenpipe
-2. Install dependencies and run the electron app:
+## Screenpipe
+
+1. Install screenpipe https://docs.screenpi.pe/docs/getting-started (https://github.com/mediar-ai/screenpipe)
+2. Install and enable our pipe
+```
+screenpipe pipe download https://github.com/sundai-club/tasks-auto-complete/tree/main/pipe
+screenpipe pipe enable tasks-auto-complete
+```
+
+## Electron app
+
+1. Install dependencies and run the electron app:
 ```bash
 # Install dependencies
 npm install
 # Run the app
 npm start
 ```
-3. ???
-4. PROFIT
 
-## Development
+### Development
 
 This application is based on Electron and includes the following key files:
 
@@ -26,7 +34,9 @@ This application is based on Electron and includes the following key files:
 - `index.html` - A web page to render. This is the app's **renderer process**.
 - `preload.js` - A content script that runs before the renderer process loads.
 
-## Resources
+### Resources
 
 - [electronjs.org/docs](https://electronjs.org/docs) - Electron documentation
 - [Electron Fiddle](https://electronjs.org/fiddle) - Test small Electron experiments
+
+
