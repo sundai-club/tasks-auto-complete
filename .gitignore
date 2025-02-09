@@ -1,6 +1,7 @@
 # Virtual environment Python
 venv
 .venv
+.DS_Store
 
 # Logs
 logs
