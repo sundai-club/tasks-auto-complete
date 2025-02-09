@@ -4,12 +4,18 @@ AI brain that knows everything you're doing on your laptop, and auto completes y
 
 # Installation
 
+Clone the repository:
+```bash
+git clone https://github.com/mediar-ai/tasks-auto-complete
+cd tasks-auto-complete
+```
+
 ## Screenpipe
 
 1. Install screenpipe https://docs.screenpi.pe/docs/getting-started (https://github.com/mediar-ai/screenpipe)
 2. Install and enable our pipe
 ```
-screenpipe pipe download https://github.com/sundai-club/tasks-auto-complete/tree/main/pipe/tasks-auto-complete
+screenpipe pipe install pipe/tasks-auto-complete
 screenpipe pipe enable tasks-auto-complete
 ```
 
