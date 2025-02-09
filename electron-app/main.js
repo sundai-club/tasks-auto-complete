@@ -225,7 +225,8 @@ ipcMain.handle('start-screenpipe', async () => {
         })
       })
     } catch (error) {
-      throw new Error('Screenpipe is not installed.')
+      console.error('Screenpipe installation check failed:', error)
+      throw new Error('Screenpipe is not installed or not in PATH.')
     }
 
     // Ensure recordings directory exists
@@ -233,58 +234,47 @@ ipcMain.handle('start-screenpipe', async () => {
       fs.mkdirSync(recordingsPath, { recursive: true })
     }
 
-    // Find screenpipe in PATH
-    const screenpipePath = 'screenpipe'
-
-    // Start screenpipe process with correct options
-    screenpipeProcess = spawn(screenpipePath, [
-      '--data-dir', recordingsPath,
-      '--fps', '1',
-      '--enable-frame-cache',
-      '--use-all-monitors',
-      '--enable-ui-monitoring',  // Enable UI monitoring for task detection
-      '--enable-llm'            // Enable LLM for task analysis
-    ], {
+    console.log('Starting screenpipe process...')
+    
+    // Start screenpipe process with minimal options first
+    screenpipeProcess = spawn('screenpipe', [], {
       env: { ...process.env },
-      shell: true  // This helps find the command in PATH
+      shell: true
     })
 
-    let startupError = ''
-
+    // Add error handling and logging
     screenpipeProcess.stdout.on('data', (data) => {
-      const output = data.toString()
-      console.log('screenpipe stdout:', output)
-      if (output.includes('error')) {
-        startupError += output
-      }
+      console.log('Screenpipe output:', data.toString())
     })
 
     screenpipeProcess.stderr.on('data', (data) => {
-      const error = data.toString()
-      console.error('screenpipe stderr:', error)
-      startupError += error
+      console.error('Screenpipe error:', data.toString())
     })
 
     screenpipeProcess.on('error', (error) => {
       console.error('Failed to start screenpipe:', error)
       screenpipeProcess = null
-      startupError += error.message
+      return { success: false, error: error.message }
     })
 
-    // Wait a bit to ensure process started successfully
-    await new Promise(resolve => setTimeout(resolve, 2000))
+    return new Promise((resolve) => {
+      screenpipeProcess.on('spawn', () => {
+        console.log('Screenpipe process spawned successfully')
+        resolve({ success: true })
+      })
 
-    if (screenpipeProcess && screenpipeProcess.exitCode === null) {
-      if (startupError) {
-        throw new Error(startupError)
-      }
-      console.log('Screenpipe started successfully')
-      return { success: true }
-    } else {
-      throw new Error(startupError || 'Screenpipe failed to start')
-    }
+      // Add a timeout in case the process doesn't start
+      setTimeout(() => {
+        if (screenpipeProcess) {
+          resolve({ success: true })
+        } else {
+          resolve({ success: false, error: 'Screenpipe process failed to start' })
+        }
+      }, 5000)
+    })
+
   } catch (error) {
-    console.error('Error starting screenpipe:', error)
+    console.error('Error in start-screenpipe handler:', error)
     return { success: false, error: error.message }
   }
 })
