@@ -164,24 +164,18 @@ streamEngineeringLogsToMarkdown();
 
 Instructions to run this pipe:
 
-1. install screenpipe and git clone this repo
-    ```
-    git clone https://github.com/mediar-ai/screenpipe.git
-    cd screenpipe
-    ```
-
-2. install dependencies:
+1. install dependencies:
     ```
     cd pipe/tasks-auto-complete
     npm i ai @ai-sdk/openai @screenpipe/js zod
     ```
 
-3. set environment variables:
+2. set environment variables:
    ```
    export OPENAI_API_KEY=your_openai_api_key
    ```
 
-4. run the pipe:
+3. run the pipe:
    ```
    screenpipe pipe install pipe/tasks-auto-complete
    screenpipe pipe enable tasks-auto-complete
