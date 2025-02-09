@@ -89,17 +89,38 @@ ipcMain.handle('save-api-key', async (event, key) => {
 ipcMain.handle('stop-screenpipe', async () => {
   if (screenpipeProcess) {
     try {
+      // Check if process is still running
+      try {
+        process.kill(screenpipeProcess.pid, 0) // Test if process exists
+      } catch (e) {
+        if (e.code === 'ESRCH') {
+          console.log('Process already terminated')
+          screenpipeProcess = null
+          return { success: true }
+        }
+      }
+
+      // Process exists, try to terminate it gracefully
       process.kill(screenpipeProcess.pid, 'SIGTERM')
       await new Promise(resolve => setTimeout(resolve, 2000))
       
-      if (screenpipeProcess.exitCode === null) {
+      // Check if it's still running after SIGTERM
+      try {
+        process.kill(screenpipeProcess.pid, 0)
+        // If we get here, process is still running, force kill it
         process.kill(screenpipeProcess.pid, 'SIGKILL')
+      } catch (e) {
+        if (e.code !== 'ESRCH') {
+          throw e // Only throw if it's not a "no such process" error
+        }
       }
       
       console.log('Screenpipe stopped successfully, data saved to:', recordingsPath)
+      screenpipeProcess = null
       return { success: true }
     } catch (error) {
       console.error('Error stopping screenpipe:', error)
+      screenpipeProcess = null // Reset the process reference
       return { success: false, error: error.message }
     }
   }
