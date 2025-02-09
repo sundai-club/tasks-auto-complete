@@ -6,6 +6,15 @@
  *
  * https://www.electronjs.org/docs/latest/tutorial/sandbox
  */
+const { contextBridge, ipcRenderer } = require('electron')
+
+contextBridge.exposeInMainWorld('electronAPI', {
+  saveApiKey: (key) => ipcRenderer.invoke('save-api-key', key),
+  startScreenpipe: () => ipcRenderer.invoke('start-screenpipe'),
+  stopScreenpipe: () => ipcRenderer.invoke('stop-screenpipe'),
+  runAssistant: (taskDescription) => ipcRenderer.invoke('run-assistant', taskDescription)
+})
+
 window.addEventListener('DOMContentLoaded', () => {
   const replaceText = (selector, text) => {
     const element = document.getElementById(selector)
