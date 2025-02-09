@@ -132,3 +132,10 @@ dist
 .yarn/build-state.yml
 .yarn/install-state.gz
 .pnp.*
+
+# Recording files
+recordings/data/*.mp4
+recordings/*.sqlite*
+recordings/*.log
+# Keep the directory structure
+!recordings/data/.gitkeep
