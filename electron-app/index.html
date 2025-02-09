@@ -5,13 +5,39 @@
     <!-- https://developer.mozilla.org/en-US/docs/Web/HTTP/CSP -->
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'">
     <link href="./styles.css" rel="stylesheet">
-    <title>Hello World!</title>
+    <title>AutoTask</title>
   </head>
   <body>
-    <h1>Hello World!</h1>
-    We are using Node.js <span id="node-version"></span>,
-    Chromium <span id="chrome-version"></span>,
-    and Electron <span id="electron-version"></span>.
+    <div class="sidebar">
+        <div class="logo">AutoTask</div>
+        <button class="nav-button active" data-page="recording">Recording</button>
+        <button class="nav-button" data-page="settings">Settings</button>
+    </div>
+
+    <div class="main-content">
+        <div class="page active" id="recording-page">
+            <div class="card">
+                <h2>Screen Recording</h2>
+                <p class="status">Ready to record</p>
+                <button id="startRecording" class="primary-button">Start Recording</button>
+                <button id="stopRecording" class="danger-button" style="display: none;">Stop Recording</button>
+            </div>
+        </div>
+
+        <div class="page" id="settings-page">
+            <div class="card">
+                <h2>Settings</h2>
+                <form id="settingsForm">
+                    <div class="form-group">
+                        <label for="apiKey">OpenAI API Key</label>
+                        <input type="password" id="apiKey" name="apiKey" placeholder="Enter your OpenAI API key">
+                    </div>
+                    <button type="submit" class="primary-button">Save Settings</button>
+                </form>
+                <p id="settingsMessage" class="message"></p>
+            </div>
+        </div>
+    </div>
 
     <!-- You can also require other files to run in this process -->
     <script src="./renderer.js"></script>

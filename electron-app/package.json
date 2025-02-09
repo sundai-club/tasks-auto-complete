@@ -1,22 +1,18 @@
 {
-  "name": "electron-quick-start",
+  "name": "task-auto-complete",
   "version": "1.0.0",
-  "description": "A minimal Electron application",
+  "description": "AI-powered screen recording and task automation app",
   "main": "main.js",
   "scripts": {
-    "start": "electron ."
+    "start": "electron .",
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "repository": "https://github.com/electron/electron-quick-start",
-  "keywords": [
-    "Electron",
-    "quick",
-    "start",
-    "tutorial",
-    "demo"
-  ],
-  "author": "GitHub",
-  "license": "CC0-1.0",
+  "author": "",
+  "license": "MIT",
   "devDependencies": {
-    "electron": "^34.1.1"
+    "electron": "^28.1.0"
+  },
+  "dependencies": {
+    "sqlite3": "^5.1.7"
   }
-}
+} 
