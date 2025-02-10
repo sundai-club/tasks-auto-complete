@@ -107,6 +107,15 @@ async function generateComputerLog(
     return logEntry;
 }
 
+async function sendToInbox(title: string, body: string) {
+    try {
+        await pipe.inbox.send({ title, body });
+    } catch (error) {
+        console.log("\n=== Inbox Service Error ===");
+        console.log(`Could not send message to inbox (${title}): ${error}`);
+        console.log("Continuing execution...");
+    }
+}
 
 async function streamComputerLogsToMarkdown(): Promise<void> {
     console.log("starting computer logs stream to markdown");
@@ -119,10 +128,10 @@ async function streamComputerLogsToMarkdown(): Promise<void> {
     const interval = config.interval * 1000;
     const lookbackPeriod = 3600 * 1000; // Look back 1 hour instead of just interval seconds
 
-    pipe.inbox.send({
-        title: "computer log stream started",
-        body: `monitoring computer work every ${config.interval} seconds, looking back 1 hour`,
-    });
+    await sendToInbox(
+        "computer log stream started",
+        `monitoring computer work every ${config.interval} seconds, looking back 1 hour`
+    );
 
     let logEntries: ComputerLog[] = [];
 
@@ -217,10 +226,10 @@ async function streamComputerLogsToMarkdown(): Promise<void> {
         } catch (error) {
             console.error("\n=== Error in Pipeline ===");
             console.error("Error details:", error);
-            await pipe.inbox.send({
-                title: "computer log error",
-                body: `error in computer log pipeline: ${error}`,
-            });
+            await sendToInbox(
+                "computer log error",
+                `error in computer log pipeline: ${error}`
+            );
         }
 
         await new Promise((resolve) => setTimeout(resolve, interval));
@@ -302,17 +311,19 @@ async function maybeProposeAgentAction(logEntries: ComputerLog[]): Promise<Strin
     console.log("\n=== LLM Response ===");
     console.log("DEBUG: AI response:", response);
 
+    // Extract the content field from the response and format it
+    const content = response.object.content;
+    const taskContent = content.includes('"content":') 
+        ? JSON.parse(content).content 
+        : content;
+    
     // Format the task on one line, removing any newlines and extra spaces
-    const taskContent = response.object.content.replace(/\s+/g, ' ').trim();
-    const formattedTask = taskContent.startsWith("TASK:") ? taskContent : `TASK: ${taskContent}`;
+    const formattedTask = `TASK: ${taskContent.replace(/\s+/g, ' ').trim()}`;
 
     console.log(formattedTask);
 
-    // Send the task to the inbox
-    await pipe.inbox.send({
-        title: "Task Suggestion",
-        body: formattedTask,
-    });
+    // Use the new sendToInbox function
+    await sendToInbox("Task Suggestion", formattedTask);
 
     return response.object.content;
 }
