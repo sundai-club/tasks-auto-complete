@@ -15,10 +15,10 @@ if (process.platform === 'darwin') {
   app.applicationSupportsSecureRestorableState = true
 }
 
-function createWindow () {
+function createWindow() {
   console.log('Creating window...')
   console.log('Current directory:', __dirname)
-  
+
   // Create the browser window.
   mainWindow = new BrowserWindow({
     width: 1200,
@@ -34,9 +34,9 @@ function createWindow () {
   const indexPath = path.join(__dirname, 'index.html')
   console.log('Loading index.html from:', indexPath)
   console.log('File exists:', fs.existsSync(indexPath))
-  
+
   mainWindow.loadFile(indexPath)
-  
+
   // Log any loading errors
   mainWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription) => {
     console.error('Failed to load:', errorCode, errorDescription)
@@ -105,7 +105,7 @@ ipcMain.handle('run-assistant', async (event, taskDescription) => {
     const agentDir = path.join(__dirname, '..', 'agent')
     const pythonScript = path.join(agentDir, 'assistant.py')
     const venvPython = path.join(agentDir, '.venv', 'bin', 'python')
-    
+
     // Verify paths exist
     if (!fs.existsSync(pythonScript)) {
       throw new Error('Assistant script not found. Please ensure the agent directory is properly set up.')
@@ -115,10 +115,10 @@ ipcMain.handle('run-assistant', async (event, taskDescription) => {
     }
 
     console.log('Running assistant with task:', taskDescription)
-    
+
     // Escape the task description for command line
     const escapedTask = JSON.stringify(taskDescription)
-    
+
     const pythonProcess = spawn(venvPython, [
       pythonScript,
       apiKey,
@@ -165,6 +165,19 @@ ipcMain.handle('run-assistant', async (event, taskDescription) => {
   }
 })
 
+// Parse tasks from screenpipe output
+function parseTasksFromOutput(output) {
+  const taskRegex = /\[tasks-auto-complete\] TASK:\s*(.*)/g;
+  const tasks = [];
+  let match;
+
+  while ((match = taskRegex.exec(output)) !== null) {
+    tasks.push(match[1].trim());
+  }
+
+  return tasks;
+}
+
 // Handle stopping screenpipe
 ipcMain.handle('stop-screenpipe', async () => {
   if (screenpipeProcess) {
@@ -183,7 +196,7 @@ ipcMain.handle('stop-screenpipe', async () => {
       // Process exists, try to terminate it gracefully
       process.kill(screenpipeProcess.pid, 'SIGTERM')
       await new Promise(resolve => setTimeout(resolve, 2000))
-      
+
       // Check if it's still running after SIGTERM
       try {
         process.kill(screenpipeProcess.pid, 0)
@@ -194,7 +207,7 @@ ipcMain.handle('stop-screenpipe', async () => {
           throw e // Only throw if it's not a "no such process" error
         }
       }
-      
+
       console.log('Screenpipe stopped successfully, data saved to:', recordingsPath)
       screenpipeProcess = null
       return { success: true }
@@ -235,7 +248,7 @@ ipcMain.handle('start-screenpipe', async () => {
     }
 
     console.log('Starting screenpipe process...')
-    
+
     // Start screenpipe process with minimal options first
     screenpipeProcess = spawn('screenpipe', [], {
       env: { ...process.env },
@@ -244,7 +257,20 @@ ipcMain.handle('start-screenpipe', async () => {
 
     // Add error handling and logging
     screenpipeProcess.stdout.on('data', (data) => {
-      console.log('Screenpipe output:', data.toString())
+      const output = data.toString();
+      console.log('Screenpipe output:', output);
+
+      // Parse and handle tasks
+      const tasks = parseTasksFromOutput(output);
+      if (tasks.length > 0) {
+        tasks.forEach(task => {
+          console.log('Found task:', task);
+          // Send task to renderer process
+          if (mainWindow) {
+            mainWindow.webContents.send('new-task', task);
+          }
+        });
+      }
     })
 
     screenpipeProcess.stderr.on('data', (data) => {

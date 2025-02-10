@@ -12,7 +12,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   saveApiKey: (key) => ipcRenderer.invoke('save-api-key', key),
   startScreenpipe: () => ipcRenderer.invoke('start-screenpipe'),
   stopScreenpipe: () => ipcRenderer.invoke('stop-screenpipe'),
-  runAssistant: (taskDescription) => ipcRenderer.invoke('run-assistant', taskDescription)
+  runAssistant: (taskDescription) => ipcRenderer.invoke('run-assistant', taskDescription),
+  onNewTask: (callback) => ipcRenderer.on('new-task', (event, task) => callback(task))
 })
 
 window.addEventListener('DOMContentLoaded', () => {
@@ -25,7 +26,6 @@ window.addEventListener('DOMContentLoaded', () => {
     replaceText(`${type}-version`, process.versions[type])
   }
 })
-
 
 //start button for screenpipe
 

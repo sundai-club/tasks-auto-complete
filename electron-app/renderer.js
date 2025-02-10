@@ -54,7 +54,7 @@ stopButton.addEventListener('click', async () => {
   } catch (error) {
     statusText.textContent = `Error: ${error.message}`
   }
-  
+
   stopButton.style.display = 'none'
   startButton.style.display = 'inline-block'
 })
@@ -66,7 +66,7 @@ const settingsMessage = document.getElementById('settingsMessage')
 settingsForm.addEventListener('submit', async (e) => {
   e.preventDefault()
   const apiKey = document.getElementById('apiKey').value.trim()
-  
+
   if (!apiKey) {
     settingsMessage.textContent = 'Please enter an API key'
     settingsMessage.className = 'message error'
@@ -100,7 +100,7 @@ acceptTaskButton.addEventListener('click', async () => {
     acceptTaskButton.disabled = true
     denyTaskButton.disabled = true
     acceptTaskButton.textContent = 'Running...'
-    
+
     const result = await window.electronAPI.runAssistant(task)
     if (result.success) {
       taskBubble.innerHTML = `
@@ -137,3 +137,67 @@ acceptTaskButton.addEventListener('click', async () => {
 denyTaskButton.addEventListener('click', () => {
   taskBubble.style.display = 'none'
 })
+
+// Listen for new tasks from screenpipe
+window.electronAPI.onNewTask((task) => {
+  console.log('Received new task:', task);
+
+  // Create task bubble
+  const taskBubble = document.createElement('div');
+  taskBubble.className = 'task-bubble';
+  taskBubble.innerHTML = `
+    <h3>New Task Detected</h3>
+    <div class="task-content">
+      <div class="task-icon">🎯</div>
+      <p class="task-description">${task}</p>
+    </div>
+    <div class="task-actions">
+      <button class="accept-task">Accept</button>
+      <button class="deny-task">Ignore</button>
+    </div>
+  `;
+
+  // Add task bubble to container
+  const taskContainer = document.getElementById('task-container');
+  if (taskContainer) {
+    taskContainer.appendChild(taskBubble);
+  }
+
+  // Handle task actions
+  const acceptButton = taskBubble.querySelector('.accept-task');
+  const denyButton = taskBubble.querySelector('.deny-task');
+
+  acceptButton.addEventListener('click', async () => {
+    try {
+      acceptButton.disabled = true;
+      denyButton.disabled = true;
+      acceptButton.textContent = 'Running...';
+
+      const result = await window.electronAPI.runAssistant(task);
+      if (result.success) {
+        taskBubble.innerHTML = `
+          <h3>Task Complete</h3>
+          <div class="task-content">
+            <div class="task-icon">✅</div>
+            <p class="task-description">${result.output || 'Task completed successfully!'}</p>
+          </div>
+        `;
+      } else {
+        throw new Error(result.error || 'Failed to run task');
+      }
+    } catch (error) {
+      console.error('Task error:', error);
+      taskBubble.innerHTML = `
+        <h3>Task Failed</h3>
+        <div class="task-content">
+          <div class="task-icon">❌</div>
+          <p class="task-description">Error: ${error.message}</p>
+        </div>
+      `;
+    }
+  });
+
+  denyButton.addEventListener('click', () => {
+    taskBubble.remove();
+  });
+});
