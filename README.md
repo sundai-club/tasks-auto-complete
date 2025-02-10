@@ -15,6 +15,7 @@ cd tasks-auto-complete
 1. Install screenpipe https://docs.screenpi.pe/docs/getting-started (https://github.com/mediar-ai/screenpipe)
 2. Install and enable our pipe
 ```
+screenpipe pipe delete tasks-auto-complete
 screenpipe pipe install pipe/tasks-auto-complete
 screenpipe pipe enable tasks-auto-complete
 ```
