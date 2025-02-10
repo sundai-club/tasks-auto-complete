@@ -16,7 +16,7 @@ async function generateComputerLog(
     screenData: ContentItem[],
 ): Promise<ComputerLog> {
     console.log("DEBUG: Raw screen data received:", JSON.stringify(screenData, null, 2));
-    
+
     // Extract text content from OCR data
     const textEntries = screenData
         .filter(item => item.type === 'OCR' && item.content && 'text' in item.content)
@@ -77,7 +77,7 @@ async function streamComputerLogsToMarkdown(): Promise<void> {
             const oneHourAgo = new Date(now.getTime() - interval);
 
             console.log("DEBUG: Querying screen data from", oneHourAgo.toISOString(), "to", now.toISOString());
-            
+
             const screenData = await pipe.queryScreenpipe({
                 startTime: oneHourAgo.toISOString(),
                 endTime: now.toISOString(),
@@ -148,7 +148,7 @@ async function maybeProposeAgentAction(logEntries: ComputerLog[]): Promise<Strin
 
     const provider = createOpenAI({
         apiKey: process.env.OPENAI_API_KEY,
-    })("gpt-4");
+    })("gpt-4o-mini");
 
     const response = await generateObject({
         model: provider,
@@ -157,12 +157,12 @@ async function maybeProposeAgentAction(logEntries: ComputerLog[]): Promise<Strin
     });
 
     console.log("DEBUG: AI response:", response);
-    
+
     const taskResponse = response.object.task;
     const formattedTask = taskResponse.startsWith("TASK:") ? taskResponse : `TASK: ${taskResponse}`;
-    
+
     console.log("DEBUG: Generated task:", formattedTask);
-    
+
     // Send the task to the inbox
     await pipe.inbox.send({
         title: "Task Suggestion",
