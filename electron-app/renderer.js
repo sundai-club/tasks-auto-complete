@@ -169,11 +169,11 @@ window.electronAPI.onNewTask((task) => {
 
   // Create task bubble
   const taskBubble = document.createElement('div');
-  taskBubble.className = 'task-bubble';
+  taskBubble.className = 'card task-bubble';
   taskBubble.innerHTML = `
     <h3>Task Takeover Request</h3>
     <div class="task-content">
-      <div class="task-icon">✈️</div>
+      <div class="task-icon">✍️</div>
       <p class="task-description">${task}</p>
     </div>
     <div class="task-actions">
