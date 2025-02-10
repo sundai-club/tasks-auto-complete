@@ -178,11 +178,17 @@ window.electronAPI.onNewTask((task) => {
   // Create task bubble
   const taskBubble = document.createElement('div');
   taskBubble.className = 'card task-bubble';
+
+  // Format timestamp
+  const timestamp = new Date(task.timestamp);
+  const formattedTime = timestamp.toLocaleTimeString();
+
   taskBubble.innerHTML = `
     <h3>Task Takeover Request</h3>
     <div class="task-content">
       <div class="task-icon">🧑‍💻</div>
-      <p class="task-description">${task}</p>
+      <p class="task-description">${task.description}</p>
+      <p class="task-timestamp">Received at: ${formattedTime}</p>
     </div>
     <div class="task-actions">
       <button class="accept-task">Accept</button>
@@ -206,7 +212,7 @@ window.electronAPI.onNewTask((task) => {
       denyButton.disabled = true;
       acceptButton.textContent = 'Running...';
 
-      const result = await window.electronAPI.runAssistant(task);
+      const result = await window.electronAPI.runAssistant(task.description);
       if (result.success) {
         taskBubble.innerHTML = `
           <h3>Task Complete</h3>

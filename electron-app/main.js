@@ -184,15 +184,21 @@ ipcMain.handle('run-assistant', async (event, taskDescription) => {
 function parseTasksFromOutput(output) {
   const taskRegex = /\[tasks-auto-complete\] TASK:\s*(.*)/g;
   const tasks = [];
-  let match;
 
+  let match;
   while ((match = taskRegex.exec(output)) !== null) {
     const task = match[1].trim();
-    tasks.push(task);
+    const taskWithTime = {
+      description: task,
+      timestamp: new Date().toISOString()
+    };
+
+    tasks.push(taskWithTime);
     // Show OS notification for new task
     new Notification({
       title: 'New Task Takeover Request',
-      body: task
+      body: `${task}\nReceived at: ${new Date().toLocaleTimeString()}`,
+      urgency: 'critical'
     }).show();
   }
 
