@@ -114,54 +114,62 @@ toggleApiKey.addEventListener('click', () => {
 })
 
 // Task handling
-const acceptTaskButton = document.getElementById('acceptTask')
-const denyTaskButton = document.getElementById('denyTask')
-const taskBubble = document.querySelector('.task-bubble')
-const taskDescription = document.querySelector('.task-description')
+function initializeTaskButtons() {
+  const acceptTaskButton = document.getElementById('acceptTask')
+  const denyTaskButton = document.getElementById('denyTask')
+  const taskBubble = document.querySelector('.task-bubble')
+  const taskDescription = document.querySelector('.task-description')
 
-acceptTaskButton.addEventListener('click', async () => {
-  try {
-    const task = taskDescription.textContent
-    acceptTaskButton.disabled = true
-    denyTaskButton.disabled = true
-    acceptTaskButton.textContent = 'Running...'
+  if (acceptTaskButton) {
+    acceptTaskButton.addEventListener('click', async () => {
+      try {
+        const task = taskDescription.textContent
+        acceptTaskButton.disabled = true
+        denyTaskButton.disabled = true
+        acceptTaskButton.textContent = 'Running...'
 
-    const result = await window.electronAPI.runAssistant(task)
-    if (result.success) {
-      taskBubble.innerHTML = `
-        <h3>Task Complete</h3>
-        <div class="task-content">
-          <div class="task-icon">✅</div>
-          <p class="task-description">${result.output || 'Task completed successfully!'}</p>
-        </div>
-      `
-    } else {
-      throw new Error(result.error || 'Failed to run task')
-    }
-  } catch (error) {
-    console.error('Task error:', error)
-    taskBubble.innerHTML = `
-      <h3>Task Failed</h3>
-      <div class="task-content">
-        <div class="task-icon">❌</div>
-        <p class="task-description">Error: ${error.message}</p>
-      </div>
-      <div class="task-actions">
-        <button id="acceptTask" class="primary-button">Try Again</button>
-        <button id="denyTask" class="secondary-button">Dismiss</button>
-      </div>
-    `
-    // Re-attach event listeners since we replaced the buttons
-    document.getElementById('acceptTask').addEventListener('click', arguments.callee)
-    document.getElementById('denyTask').addEventListener('click', () => {
+        const result = await window.electronAPI.runAssistant(task)
+        if (result.success) {
+          taskBubble.innerHTML = `
+            <h3>Task Complete</h3>
+            <div class="task-content">
+              <div class="task-icon">✅</div>
+              <p class="task-description">${result.output || 'Task completed successfully!'}</p>
+            </div>
+          `
+        } else {
+          throw new Error(result.error || 'Failed to run task')
+        }
+      } catch (error) {
+        console.error('Task error:', error)
+        taskBubble.innerHTML = `
+          <h3>Task Failed</h3>
+          <div class="task-content">
+            <div class="task-icon">❌</div>
+            <p class="task-description">Error: ${error.message}</p>
+          </div>
+          <div class="task-actions">
+            <button id="acceptTask" class="primary-button">Try Again</button>
+            <button id="denyTask" class="secondary-button">Dismiss</button>
+          </div>
+        `
+        // Re-attach event listeners since we replaced the buttons
+        document.getElementById('acceptTask').addEventListener('click', arguments.callee)
+        document.getElementById('denyTask').addEventListener('click', () => {
+          taskBubble.style.display = 'none'
+        })
+      }
+    })
+  }
+
+  if (denyTaskButton) {
+    denyTaskButton.addEventListener('click', () => {
       taskBubble.style.display = 'none'
     })
   }
-})
+}
 
-denyTaskButton.addEventListener('click', () => {
-  taskBubble.style.display = 'none'
-})
+initializeTaskButtons()
 
 // Listen for new tasks from screenpipe
 window.electronAPI.onNewTask((task) => {
@@ -173,7 +181,7 @@ window.electronAPI.onNewTask((task) => {
   taskBubble.innerHTML = `
     <h3>Task Takeover Request</h3>
     <div class="task-content">
-      <div class="task-icon">✍️</div>
+      <div class="task-icon">🧑‍💻</div>
       <p class="task-description">${task}</p>
     </div>
     <div class="task-actions">

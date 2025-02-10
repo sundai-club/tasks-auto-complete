@@ -1,5 +1,5 @@
 // Modules to control application life and create native browser window
-const { app, BrowserWindow, ipcMain } = require('electron')
+const { app, BrowserWindow, ipcMain, Notification } = require('electron')
 const path = require('path')
 const fs = require('fs')
 const { spawn } = require('child_process')
@@ -187,7 +187,13 @@ function parseTasksFromOutput(output) {
   let match;
 
   while ((match = taskRegex.exec(output)) !== null) {
-    tasks.push(match[1].trim());
+    const task = match[1].trim();
+    tasks.push(task);
+    // Show OS notification for new task
+    new Notification({
+      title: 'New Task Takeover Request',
+      body: task
+    }).show();
   }
 
   return tasks;
@@ -273,7 +279,7 @@ ipcMain.handle('start-screenpipe', async () => {
     const settings = JSON.parse(fs.readFileSync(settingsPath, 'utf8'))
     const apiKey = settings.apiKey
 
-    screenpipeProcess = spawn('screenpipe', [], {
+    screenpipeProcess = spawn('screenpipe', ['--disable-telemetry'], {
       shell: true,
       env: {
         ...process.env,
