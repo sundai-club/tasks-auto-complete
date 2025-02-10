@@ -14,7 +14,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   startScreenpipe: () => ipcRenderer.invoke('start-screenpipe'),
   stopScreenpipe: () => ipcRenderer.invoke('stop-screenpipe'),
   runAssistant: (taskDescription) => ipcRenderer.invoke('run-assistant', taskDescription),
-  onNewTask: (callback) => ipcRenderer.on('new-task', (event, task) => callback(task))
+  onNewTask: (callback) => ipcRenderer.on('new-task', (event, task) => callback(task)),
+  onNotificationAction: (callback) => ipcRenderer.on('notification-action', (event, action) => callback(action))
 })
 
 window.addEventListener('DOMContentLoaded', () => {

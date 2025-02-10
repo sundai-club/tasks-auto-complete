@@ -233,3 +233,10 @@ button:disabled {
   opacity: 0.6;
   cursor: not-allowed;
 }
+
+.task-timestamp {
+  font-size: 0.85em;
+  color: #666;
+  margin-top: 4px;
+  margin-bottom: 8px;
+}

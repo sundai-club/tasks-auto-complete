@@ -34,6 +34,7 @@ async function generateComputerLog(
 ): Promise<ComputerLog> {
     console.log("\n=== Raw Screen Data ===");
     console.log("Number of items:", screenData.length);
+    console.log("DEBUG: Raw screen data received:", JSON.stringify(screenData, null, 2));
     
     // First, let's extract all OCR text with context
     const ocrTexts = screenData
@@ -299,9 +300,19 @@ async function maybeProposeAgentAction(logEntries: ComputerLog[]): Promise<Strin
     });
 
     console.log("\n=== LLM Response ===");
+    console.log("DEBUG: AI response:", response);
+
     // Format the task on one line, removing any newlines and extra spaces
     const taskContent = response.object.content.replace(/\s+/g, ' ').trim();
-    console.log("TASK:", taskContent);
+    const formattedTask = taskContent.startsWith("TASK:") ? taskContent : `TASK: ${taskContent}`;
+
+    console.log(formattedTask);
+
+    // Send the task to the inbox
+    await pipe.inbox.send({
+        title: "Task Suggestion",
+        body: formattedTask,
+    });
 
     return response.object.content;
 }

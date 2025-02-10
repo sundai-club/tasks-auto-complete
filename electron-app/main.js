@@ -184,19 +184,47 @@ ipcMain.handle('run-assistant', async (event, taskDescription) => {
 function parseTasksFromOutput(output) {
   const taskRegex = /\[tasks-auto-complete\] TASK:\s*(.*)/g;
   const tasks = [];
-  let match;
 
+  let match;
   while ((match = taskRegex.exec(output)) !== null) {
     const task = match[1].trim();
-    tasks.push(task);
+    const taskWithTime = {
+      description: task,
+      timestamp: new Date().toISOString()
+    };
+
+    tasks.push(taskWithTime);
     // Show OS notification for new task
     new Notification({
       title: 'New Task Takeover Request',
-      body: task
+      body: `${task}\nReceived at: ${new Date().toLocaleTimeString()}`,
+      urgency: 'critical'
     }).show();
   }
 
   return tasks;
+}
+
+// Function to show notification with actions
+function showNotificationWithActions(title, body) {
+  const notification = new Notification({
+    title,
+    body,
+    actions: [
+      { type: 'button', text: 'Accept' },
+      { type: 'button', text: 'Ignore' }
+    ],
+    silent: false
+  })
+
+  notification.on('action', (event, index) => {
+    const action = index === 0 ? 'accept' : 'ignore'
+    if (mainWindow) {
+      mainWindow.webContents.send('notification-action', action)
+    }
+  })
+
+  notification.show()
 }
 
 // Handle stopping screenpipe
