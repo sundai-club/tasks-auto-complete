@@ -86,6 +86,21 @@ ipcMain.handle('save-api-key', async (event, key) => {
   }
 })
 
+// Handle getting API key
+ipcMain.handle('get-api-key', async () => {
+  try {
+    const settingsPath = path.join(app.getPath('userData'), 'settings.json')
+    if (!fs.existsSync(settingsPath)) {
+      return { success: true, apiKey: '' }
+    }
+    const settings = JSON.parse(fs.readFileSync(settingsPath, 'utf8'))
+    return { success: true, apiKey: settings.apiKey || '' }
+  } catch (error) {
+    console.error('Error getting API key:', error)
+    return { success: false, error: error.message }
+  }
+})
+
 // Handle running the Python assistant
 ipcMain.handle('run-assistant', async (event, taskDescription) => {
   try {
@@ -250,9 +265,20 @@ ipcMain.handle('start-screenpipe', async () => {
     console.log('Starting screenpipe process...')
 
     // Start screenpipe process with minimal options first
+    const settingsPath = path.join(app.getPath('userData'), 'settings.json')
+    if (!fs.existsSync(settingsPath)) {
+      throw new Error('OpenAI API key not found. Please add your API key in the Settings tab.')
+    }
+
+    const settings = JSON.parse(fs.readFileSync(settingsPath, 'utf8'))
+    const apiKey = settings.apiKey
+
     screenpipeProcess = spawn('screenpipe', [], {
-      env: { ...process.env },
-      shell: true
+      shell: true,
+      env: {
+        ...process.env,
+        OPENAI_API_KEY: apiKey // Add OpenAI API key to environment
+      }
     })
 
     // Add error handling and logging

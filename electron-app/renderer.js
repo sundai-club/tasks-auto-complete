@@ -11,7 +11,7 @@ const navButtons = document.querySelectorAll('.nav-button')
 const pages = document.querySelectorAll('.page')
 
 navButtons.forEach(button => {
-  button.addEventListener('click', () => {
+  button.addEventListener('click', async () => {
     const targetPage = button.dataset.page
 
     // Update active states
@@ -20,6 +20,22 @@ navButtons.forEach(button => {
 
     button.classList.add('active')
     document.getElementById(`${targetPage}-page`).classList.add('active')
+
+    // Load API key when settings page is opened
+    if (targetPage === 'settings') {
+      try {
+        const result = await window.electronAPI.getApiKey()
+        if (result.success) {
+          document.getElementById('apiKey').value = result.apiKey
+        } else {
+          throw new Error(result.error || 'Failed to load API key')
+        }
+      } catch (error) {
+        const settingsMessage = document.getElementById('settingsMessage')
+        settingsMessage.textContent = `Error: ${error.message}`
+        settingsMessage.className = 'message error'
+      }
+    }
   })
 })
 
@@ -78,7 +94,6 @@ settingsForm.addEventListener('submit', async (e) => {
     if (result.success) {
       settingsMessage.textContent = 'API key saved successfully'
       settingsMessage.className = 'message success'
-      settingsForm.reset()
     } else {
       throw new Error(result.error || 'Failed to save API key')
     }
@@ -86,6 +101,16 @@ settingsForm.addEventListener('submit', async (e) => {
     settingsMessage.textContent = `Error: ${error.message}`
     settingsMessage.className = 'message error'
   }
+})
+
+// API Key visibility toggle
+const toggleApiKey = document.getElementById('toggleApiKey')
+const apiKeyInput = document.getElementById('apiKey')
+
+toggleApiKey.addEventListener('click', () => {
+  const type = apiKeyInput.type
+  apiKeyInput.type = type === 'password' ? 'text' : 'password'
+  toggleApiKey.querySelector('.eye-icon').textContent = type === 'password' ? '🔒' : '👁️'
 })
 
 // Task handling
@@ -146,9 +171,9 @@ window.electronAPI.onNewTask((task) => {
   const taskBubble = document.createElement('div');
   taskBubble.className = 'task-bubble';
   taskBubble.innerHTML = `
-    <h3>New Task Detected</h3>
+    <h3>Task Takeover Request</h3>
     <div class="task-content">
-      <div class="task-icon">🎯</div>
+      <div class="task-icon">✈️</div>
       <p class="task-description">${task}</p>
     </div>
     <div class="task-actions">

@@ -26,6 +26,10 @@
                 <button id="stopRecording" class="danger-button" style="display: none;">Stop Recording</button>
             </div>
 
+            <div id="task-container">
+                <!-- Tasks will be dynamically added here -->
+            </div>
+
             <div class="card task-bubble">
                 <h3>Task Takeover Request</h3>
                 <div class="task-content">
@@ -47,7 +51,13 @@
                 <form id="settingsForm">
                     <div class="form-group">
                         <label for="apiKey">OpenAI API Key</label>
-                        <input type="password" id="apiKey" name="apiKey" placeholder="Enter your OpenAI API key">
+                        <div class="input-group">
+                            <input type="password" id="apiKey" name="apiKey" placeholder="Enter your OpenAI API key">
+                            <button type="button" id="toggleApiKey" class="secondary-button"
+                                aria-label="Toggle API key visibility">
+                                <span class="eye-icon">👁️</span>
+                            </button>
+                        </div>
                     </div>
                     <button type="submit" class="primary-button">Save Settings</button>
                 </form>
