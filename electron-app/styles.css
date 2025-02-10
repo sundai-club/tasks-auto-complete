@@ -128,7 +128,6 @@ input {
   border: 1px solid #d1d5db;
   border-radius: 6px;
   font-size: 16px;
-  margin-bottom: 16px;
 }
 
 input:focus {
@@ -211,8 +210,8 @@ input:focus {
 }
 
 .input-group input {
-  height: 42px;
   flex: 1;
+  margin-right: 5px;
 }
 
 #toggleApiKey {
