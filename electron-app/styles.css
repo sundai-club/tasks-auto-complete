@@ -128,7 +128,6 @@ input {
   border: 1px solid #d1d5db;
   border-radius: 6px;
   font-size: 16px;
-  margin-bottom: 16px;
 }
 
 input:focus {
@@ -203,6 +202,31 @@ input:focus {
 
 .secondary-button:hover {
   background-color: #d1d5db;
+}
+
+.input-group {
+  display: flex;
+  align-items: center;
+}
+
+.input-group input {
+  flex: 1;
+  margin-right: 5px;
+}
+
+#toggleApiKey {
+  padding: 0 12px;
+  height: 42px;
+  /* Match input height */
+}
+
+.eye-icon {
+  font-size: 24px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
 }
 
 button:disabled {

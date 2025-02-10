@@ -1,13 +1,16 @@
 <!DOCTYPE html>
 <html>
-  <head>
+
+<head>
     <meta charset="UTF-8">
     <!-- https://developer.mozilla.org/en-US/docs/Web/HTTP/CSP -->
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'">
+    <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'">
     <link href="./styles.css" rel="stylesheet">
     <title>AutoTask</title>
-  </head>
-  <body>
+</head>
+
+<body>
     <div class="sidebar">
         <div class="logo">AutoTask</div>
         <button class="nav-button active" data-page="recording">Recording</button>
@@ -23,17 +26,10 @@
                 <button id="stopRecording" class="danger-button" style="display: none;">Stop Recording</button>
             </div>
 
-            <div class="card task-bubble">
-                <h3>Task Takeover Request</h3>
-                <div class="task-content">
-                    <div class="task-icon">✈️</div>
-                    <p class="task-description">Find the cheapest flight from Barcelona to Boston on April 4th using Google Flights. Please search for direct flights first, then consider options with one stop if needed. Look for economy class tickets and note any baggage restrictions.</p>
-                </div>
-                <div class="task-actions">
-                    <button id="acceptTask" class="primary-button">Accept Task</button>
-                    <button id="denyTask" class="secondary-button">Decline</button>
-                </div>
+            <div id="task-container">
+                <!-- Tasks will be dynamically added here -->
             </div>
+
         </div>
 
         <div class="page" id="settings-page">
@@ -42,7 +38,13 @@
                 <form id="settingsForm">
                     <div class="form-group">
                         <label for="apiKey">OpenAI API Key</label>
-                        <input type="password" id="apiKey" name="apiKey" placeholder="Enter your OpenAI API key">
+                        <div class="input-group">
+                            <input type="password" id="apiKey" name="apiKey" placeholder="Enter your OpenAI API key">
+                            <button type="button" id="toggleApiKey" class="secondary-button"
+                                aria-label="Toggle API key visibility">
+                                <span class="eye-icon">👁️</span>
+                            </button>
+                        </div>
                     </div>
                     <button type="submit" class="primary-button">Save Settings</button>
                 </form>
@@ -53,5 +55,6 @@
 
     <!-- You can also require other files to run in this process -->
     <script src="./renderer.js"></script>
-  </body>
+</body>
+
 </html>
