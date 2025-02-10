@@ -1,82 +1,61 @@
 import { z } from "zod";
 import { generateObject } from "ai";
 import { createOpenAI } from "@ai-sdk/openai";
-import { pipe, ContentItem } from "@screenpipe/js";
+import { pipe, ContentItem, OCRContent } from "@screenpipe/js";
 
-const engineeringLog = z.object({
+const computerLog = z.object({
     platform: z.string(),
     identifier: z.string(),
     timestamp: z.string(),
     content: z.string(),
 });
 
-type EngineeringLog = z.infer<typeof engineeringLog>;
+type ComputerLog = z.infer<typeof computerLog>;
 
-async function generateEngineeringLog(
+async function generateComputerLog(
     screenData: ContentItem[],
-): Promise<EngineeringLog> {
-    const filteredBrowserOnly = screenData.filter((item) => {
-        return (item.type == 'OCR' || item.type == 'UI') && (item.content.appName === "Chrome" || item.content.appName === "Firefox");
-    });
-    const prompt = `You are provided with screen data extracted from various applications:
-  <screen_data>
-  ${JSON.stringify(filteredBrowserOnly)}
-  </screen_data>
-  
-  Your task is to extract only browser interactions and analyze if this user alrady performed silimar action in the past.
-  If they did, you should suggest the next action they should take.
-  
-  For each message found, generate a JSON object with this structure:
-  
-  {    
-    "platform": "whatsapp",
-    "identifier": "+1234567890",
-    "timestamp": "2024-03-21T15:30:00Z",
-    "content": "See you tomorrow at the meeting"
-  }
+): Promise<ComputerLog> {
+    console.log("DEBUG: Raw screen data received:", JSON.stringify(screenData, null, 2));
+    
+    // Extract text content from OCR data
+    const textEntries = screenData
+        .filter(item => item.type === 'OCR' && item.content && 'text' in item.content)
+        .map(item => {
+            const ocrContent = item.content as OCRContent;
+            return {
+                platform: 'screen',
+                identifier: ocrContent.windowName || 'unknown',
+                timestamp: new Date().toISOString(),
+                content: ocrContent.text.trim()
+            };
+        })
+        .filter(entry => entry.content !== '');
 
-  the action is the detailed step by step plan to perform this action.
-  
-  **Important Rules**:
-  - Only process Browser interactions
-  - Ensure timestamps are in ISO format
-  - Exclude any non-messaging content
-  
-  **Example Output**:
-  [
-    {
-      "platform": "whatsapp",
-      "identifier": "+1234567890",
-      "timestamp": "2024-03-21T15:30:00Z",
-      "content": "See you tomorrow at the meeting"
-    },
-    {
-      "platform": "discord",
-      "identifier": "user#1234",
-      "timestamp": "2024-03-21T15:31:00Z",
-      "content": "I'll be there!"
+    console.log("DEBUG: Extracted text entries:", JSON.stringify(textEntries, null, 2));
+
+    if (textEntries.length === 0) {
+        return {
+            platform: 'screen',
+            identifier: 'ocr',
+            timestamp: new Date().toISOString(),
+            content: 'No relevant text detected'
+        };
     }
- ]
-  Analyze the screen data and provide only the most recent messages matching these criteria.`;
 
-    const provider = createOpenAI({
-        apiKey: process.env.OPENAI_API_KEY,
-    })("gpt-4o");
+    // Combine all text entries into a single log entry
+    const combinedEntry = {
+        platform: 'screen',
+        identifier: 'ocr',
+        timestamp: new Date().toISOString(),
+        content: textEntries.map(entry => entry.content).join('\n')
+    };
 
-    const response = await generateObject({
-        model: provider,
-        messages: [{ role: "user", content: prompt }],
-        schema: engineeringLog,
-    });
-
-    console.log("ai answer:", response);
-
-    return response.object;
+    console.log("DEBUG: Combined log entry:", JSON.stringify(combinedEntry, null, 2));
+    return combinedEntry;
 }
 
-
-async function streamEngineeringLogsToMarkdown(): Promise<void> {
-    console.log("starting engineering logs stream to markdown");
+async function streamComputerLogsToMarkdown(): Promise<void> {
+    console.log("starting computer logs stream to markdown");
 
     const config = {
         interval: 60,
@@ -86,17 +65,19 @@ async function streamEngineeringLogsToMarkdown(): Promise<void> {
     const interval = config.interval * 1000;
 
     pipe.inbox.send({
-        title: "engineering log stream started",
-        body: `monitoring engineering work every ${config.interval} seconds`,
+        title: "computer log stream started",
+        body: `monitoring computer work every ${config.interval} seconds`,
     });
 
-    let logEntries: EngineeringLog[] = [];
+    let logEntries: ComputerLog[] = [];
 
     while (true) {
         try {
             const now = new Date();
             const oneHourAgo = new Date(now.getTime() - interval);
 
+            console.log("DEBUG: Querying screen data from", oneHourAgo.toISOString(), "to", now.toISOString());
+            
             const screenData = await pipe.queryScreenpipe({
                 startTime: oneHourAgo.toISOString(),
                 endTime: now.toISOString(),
@@ -104,21 +85,30 @@ async function streamEngineeringLogsToMarkdown(): Promise<void> {
                 contentType: "ocr",
             });
 
+            console.log("DEBUG: Query response:", JSON.stringify({
+                hasData: !!screenData,
+                dataLength: screenData?.data?.length || 0,
+                timeRange: {
+                    start: oneHourAgo.toISOString(),
+                    end: now.toISOString()
+                }
+            }, null, 2));
+
             if (screenData && screenData.data.length > 0) {
-                const logEntry = await generateEngineeringLog(
+                const logEntry = await generateComputerLog(
                     screenData.data
                 );
-                console.log("engineering log entry:", logEntry);
+                console.log("DEBUG: Generated log entry:", JSON.stringify(logEntry, null, 2));
                 logEntries.push(logEntry);
                 await maybeProposeAgentAction(logEntries);
             } else {
-                console.log("no relevant engineering work detected in the last hour");
+                console.log("no relevant computer work detected in the last hour");
             }
         } catch (error) {
-            console.error("error in engineering log pipeline:", error);
+            console.error("error in computer log pipeline:", error);
             await pipe.inbox.send({
-                title: "engineering log error",
-                body: `error in engineering log pipeline: ${error}`,
+                title: "computer log error",
+                body: `error in computer log pipeline: ${error}`,
             });
         }
 
@@ -126,40 +116,63 @@ async function streamEngineeringLogsToMarkdown(): Promise<void> {
     }
 }
 
+async function maybeProposeAgentAction(logEntries: ComputerLog[]): Promise<String | undefined> {
+    console.log("DEBUG: Proposing agent action for log entries:", JSON.stringify(logEntries, null, 2));
 
-async function maybeProposeAgentAction(logEntry: EngineeringLog[]): Promise<String | undefined> {
-    console.log("proposing agent action for log entry:", logEntry);
+    const taskSchema = z.object({
+        task: z.string()
+    });
+
+    // Get the most recent log entry's content
+    const latestContent = logEntries[logEntries.length - 1].content;
+    console.log("DEBUG: Latest content being sent to LLM:", latestContent);
 
     const prompt = `
-    You are provided with an engineering log entries    
-    ${JSON.stringify(logEntry)}
+    You are an AI assistant analyzing computer screen content to suggest helpful next actions.
+    
+    Recent screen activity history:
+    ${logEntries.slice(-5).map(entry => `[${entry.timestamp}] ${entry.content}`).join('\n')}
 
-    Your task is to analyze the log entries and propose the next action that the user should take.
-    The action is the detailed step by step plan to perform this action.
+    Based on this activity history, suggest a specific, actionable next step or task that would be helpful.
+    Focus on practical, immediate actions that would be most helpful given the current context.
+    
+    Rules:
+    1. Your suggestion must be directly related to the actual content shown in the activity history
+    2. Do not suggest generic tasks or use example tasks
+    3. If you cannot derive a specific actionable task from the content, respond with "TASK: Continue monitoring for actionable content"
+    4. The task must be something concrete that can be done right now
+    5. Include relevant details from the screen content in your task
 
-    **Example Output**:
-    "The user should click on the 'Confirm' button to complete the transaction."
+    Format your response as a clear, direct task suggestion starting with "TASK:".
     `;
-
 
     const provider = createOpenAI({
         apiKey: process.env.OPENAI_API_KEY,
-    })("gpt-4o");
+    })("gpt-4");
 
     const response = await generateObject({
         model: provider,
         messages: [{ role: "user", content: prompt }],
-        schema: engineeringLog,
+        schema: taskSchema,
     });
 
-    console.log("ai answer:", response);
-    console.log("TASK: ", response.object.content);
+    console.log("DEBUG: AI response:", response);
+    
+    const taskResponse = response.object.task;
+    const formattedTask = taskResponse.startsWith("TASK:") ? taskResponse : `TASK: ${taskResponse}`;
+    
+    console.log("DEBUG: Generated task:", formattedTask);
+    
+    // Send the task to the inbox
+    await pipe.inbox.send({
+        title: "Task Suggestion",
+        body: formattedTask,
+    });
 
-    return response.object.content;
+    return formattedTask;
 }
 
-
-streamEngineeringLogsToMarkdown();
+streamComputerLogsToMarkdown();
 
 /*
 
