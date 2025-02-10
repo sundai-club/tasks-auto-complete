@@ -205,6 +205,28 @@ function parseTasksFromOutput(output) {
   return tasks;
 }
 
+// Function to show notification with actions
+function showNotificationWithActions(title, body) {
+  const notification = new Notification({
+    title,
+    body,
+    actions: [
+      { type: 'button', text: 'Accept' },
+      { type: 'button', text: 'Ignore' }
+    ],
+    silent: false
+  })
+
+  notification.on('action', (event, index) => {
+    const action = index === 0 ? 'accept' : 'ignore'
+    if (mainWindow) {
+      mainWindow.webContents.send('notification-action', action)
+    }
+  })
+
+  notification.show()
+}
+
 // Handle stopping screenpipe
 ipcMain.handle('stop-screenpipe', async () => {
   if (screenpipeProcess) {

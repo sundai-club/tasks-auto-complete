@@ -171,72 +171,91 @@ function initializeTaskButtons() {
 
 initializeTaskButtons()
 
+// Store tasks in memory
+let tasks = [];
+
 // Listen for new tasks from screenpipe
 window.electronAPI.onNewTask((task) => {
   console.log('Received new task:', task);
 
-  // Create task bubble
-  const taskBubble = document.createElement('div');
-  taskBubble.className = 'card task-bubble';
+  // Add task to tasks array
+  tasks.unshift(task); // Add new task to beginning of array
 
-  // Format timestamp
-  const timestamp = new Date(task.timestamp);
-  const formattedTime = timestamp.toLocaleTimeString();
-
-  taskBubble.innerHTML = `
-    <h3>Task Takeover Request</h3>
-    <div class="task-content">
-      <div class="task-icon">🧑‍💻</div>
-      <p class="task-description">${task.description}</p>
-      <p class="task-timestamp">Received at: ${formattedTime}</p>
-    </div>
-    <div class="task-actions">
-      <button class="accept-task">Accept</button>
-      <button class="deny-task">Ignore</button>
-    </div>
-  `;
-
-  // Add task bubble to container
   const taskContainer = document.getElementById('task-container');
   if (taskContainer) {
-    taskContainer.appendChild(taskBubble);
-  }
+    const taskBubble = document.createElement('div');
+    taskBubble.className = 'card task-bubble';
 
-  // Handle task actions
-  const acceptButton = taskBubble.querySelector('.accept-task');
-  const denyButton = taskBubble.querySelector('.deny-task');
+    // Format timestamp
+    const timestamp = new Date(task.timestamp);
+    const formattedTime = timestamp.toLocaleTimeString();
 
-  acceptButton.addEventListener('click', async () => {
-    try {
-      acceptButton.disabled = true;
-      denyButton.disabled = true;
-      acceptButton.textContent = 'Running...';
+    taskBubble.innerHTML = `
+      <h3>Task Takeover Request</h3>
+      <div class="task-content">
+        <div class="task-icon">🧑‍💻</div>
+        <p class="task-description">${task.description}</p>
+        <p class="task-timestamp">Received at: ${formattedTime}</p>
+      </div>
+      <div class="task-actions">
+        <button class="accept-task">Accept</button>
+        <button class="deny-task">Ignore</button>
+      </div>
+    `;
 
-      const result = await window.electronAPI.runAssistant(task.description);
-      if (result.success) {
+    // Insert new task at the top
+    taskContainer.insertBefore(taskBubble, taskContainer.firstChild);
+
+    // Add event listeners to the new task's buttons
+    const acceptButton = taskBubble.querySelector('.accept-task');
+    const denyButton = taskBubble.querySelector('.deny-task');
+
+    acceptButton.addEventListener('click', async () => {
+      try {
+        acceptButton.disabled = true;
+        denyButton.disabled = true;
+        acceptButton.textContent = 'Running...';
+
+        const result = await window.electronAPI.runAssistant(task.description);
+        if (result.success) {
+          taskBubble.innerHTML = `
+            <h3>Task Complete</h3>
+            <div class="task-content">
+              <div class="task-icon">✅</div>
+              <p class="task-description">${result.output || 'Task completed successfully!'}</p>
+            </div>
+          `;
+        } else {
+          throw new Error(result.error || 'Failed to run task');
+        }
+      } catch (error) {
+        console.error('Task error:', error);
         taskBubble.innerHTML = `
-          <h3>Task Complete</h3>
+          <h3>Task Failed</h3>
           <div class="task-content">
-            <div class="task-icon">✅</div>
-            <p class="task-description">${result.output || 'Task completed successfully!'}</p>
+            <div class="task-icon">❌</div>
+            <p class="task-description">Error: ${error.message}</p>
           </div>
         `;
-      } else {
-        throw new Error(result.error || 'Failed to run task');
       }
-    } catch (error) {
-      console.error('Task error:', error);
-      taskBubble.innerHTML = `
-        <h3>Task Failed</h3>
-        <div class="task-content">
-          <div class="task-icon">❌</div>
-          <p class="task-description">Error: ${error.message}</p>
-        </div>
-      `;
-    }
-  });
+    });
 
-  denyButton.addEventListener('click', () => {
-    taskBubble.remove();
-  });
+    denyButton.addEventListener('click', () => {
+      taskBubble.remove();
+      // Remove task from tasks array
+      tasks = tasks.filter(t => t !== task);
+    });
+  }
 });
+
+// Handle notification actions
+window.electronAPI.onNotificationAction((action) => {
+  console.log('Notification action:', action)
+  if (action === 'accept') {
+    // Handle accept action
+    statusText.textContent = 'Task accepted'
+  } else if (action === 'ignore') {
+    // Handle ignore action
+    statusText.textContent = 'Task ignored'
+  }
+})
