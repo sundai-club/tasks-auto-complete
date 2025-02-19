@@ -120,12 +120,12 @@ async function sendToInbox(title: string, body: string) {
     }
 }
 
-async function streamComputerLogsToMarkdown(onlyChrome: boolean): Promise<void> {
+async function streamComputerLogs(onlyChrome: boolean): Promise<void> {
     console.log("starting computer logs stream to markdown");
 
     const config = {
         interval: 60,
-    }
+    };
     console.log("loaded config:", JSON.stringify(config, null, 2));
 
     const interval = config.interval * 1000;
@@ -334,6 +334,6 @@ async function maybeProposeAgentAction(logEntries: ComputerLog[]): Promise<Strin
 }
 
 
-streamComputerLogsToMarkdown(true).catch(error => {
-    console.error("Error in streamComputerLogsToMarkdown:", error);
+streamComputerLogs(true).catch(error => {
+    console.error("Error in streamComputerLogs:", error);
 });
