@@ -1,4 +1,3 @@
-import { z } from "zod";
 import { generateObject } from "ai";
 import { createOpenAI } from "@ai-sdk/openai";
 import { pipe, ContentItem } from "@screenpipe/js";
@@ -20,14 +19,13 @@ interface UIContent extends BaseContent {
     elementText?: string;
 }
 
-const computerLog = z.object({
-    platform: z.string(),
-    identifier: z.string(),
-    timestamp: z.string(),
-    content: z.string(),
-});
+interface ComputerLog {
+    platform: string;
+    identifier: string;
+    timestamp: string;
+    content: string;
+}
 
-type ComputerLog = z.infer<typeof computerLog>;
 
 async function generateComputerLog(
     screenData: ContentItem[],
@@ -330,27 +328,3 @@ async function maybeProposeAgentAction(logEntries: ComputerLog[]): Promise<Strin
 
 
 streamComputerLogsToMarkdown();
-
-/*
-
-Instructions to run this pipe:
-
-1. install dependencies:
-    ```
-    cd pipe/tasks-auto-complete
-    npm i ai @ai-sdk/openai @screenpipe/js zod
-    ```
-
-2. set environment variables:
-   ```
-   export OPENAI_API_KEY=your_openai_api_key
-   ```
-
-3. run the pipe:
-   ```
-   screenpipe pipe install pipe/tasks-auto-complete
-   screenpipe pipe enable tasks-auto-complete
-   screenpipe 
-   ```
-
-*/
