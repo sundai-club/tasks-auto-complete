@@ -334,4 +334,6 @@ async function maybeProposeAgentAction(logEntries: ComputerLog[]): Promise<Strin
 }
 
 
-streamComputerLogsToMarkdown(true);
+streamComputerLogsToMarkdown(true).catch(error => {
+    console.error("Error in streamComputerLogsToMarkdown:", error);
+});
