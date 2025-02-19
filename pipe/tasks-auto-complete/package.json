@@ -5,11 +5,12 @@
   "author": "Alexander Ivkin",
   "license": "MIT",
   "scripts": {
-    "install": "screenpipe pipe delete tasks-auto-complete && screenpipe pipe install ../tasks-auto-complete && screenpipe pipe enable tasks-auto-complete"
+    "rebuild": "yes y | screenpipe pipe delete tasks-auto-complete && screenpipe pipe install ../tasks-auto-complete && screenpipe pipe enable tasks-auto-complete"
   },
   "dependencies": {
     "@ai-sdk/openai": "1.1.13",
     "@screenpipe/js": "1.0.12",
-    "ai": "4.1.44"
+    "ai": "4.1.44",
+    "zod": "3.24.2"
   }
 }

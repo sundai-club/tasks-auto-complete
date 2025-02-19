@@ -11,10 +11,10 @@
    export OPENAI_API_KEY=your_openai_api_key
    ```
 
-3. Install the pipe:
+3. Install or rebuild the pipe:
    ```
    cd pipe/tasks-auto-complete
-   npm run install
+   npm run rebuild
    ```
 4. Run the screenpipe
    ```
