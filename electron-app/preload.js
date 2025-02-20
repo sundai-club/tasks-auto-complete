@@ -8,15 +8,32 @@
  */
 const { contextBridge, ipcRenderer } = require('electron')
 
-contextBridge.exposeInMainWorld('electronAPI', {
-  saveApiKey: (key) => ipcRenderer.invoke('save-api-key', key),
-  getApiKey: () => ipcRenderer.invoke('get-api-key'),
-  startScreenpipe: () => ipcRenderer.invoke('start-screenpipe'),
-  stopScreenpipe: () => ipcRenderer.invoke('stop-screenpipe'),
-  runAssistant: (taskDescription) => ipcRenderer.invoke('run-assistant', taskDescription),
-  onNewTask: (callback) => ipcRenderer.on('new-task', (event, task) => callback(task)),
-  onNotificationAction: (callback) => ipcRenderer.on('notification-action', (event, action) => callback(action))
-})
+// Expose protected methods that allow the renderer process to use
+// the ipcRenderer without exposing the entire object
+contextBridge.exposeInMainWorld(
+  'electronAPI',
+  {
+    saveApiKey: (key) => ipcRenderer.invoke('save-api-key', key),
+    getApiKey: () => ipcRenderer.invoke('get-api-key'),
+    startScreenpipe: () => ipcRenderer.invoke('start-screenpipe'),
+    stopScreenpipe: () => ipcRenderer.invoke('stop-screenpipe'),
+    runAssistant: (taskDescription) => ipcRenderer.invoke('run-assistant', taskDescription),
+    onNewTask: (callback) => {
+      ipcRenderer.on('new-task', (_event, task) => callback(task))
+      // Return a cleanup function
+      return () => {
+        ipcRenderer.removeAllListeners('new-task')
+      }
+    },
+    onNotificationAction: (callback) => {
+      ipcRenderer.on('notification-action', (_event, action) => callback(action))
+      // Return a cleanup function
+      return () => {
+        ipcRenderer.removeAllListeners('notification-action')
+      }
+    }
+  }
+)
 
 window.addEventListener('DOMContentLoaded', () => {
   const replaceText = (selector, text) => {
@@ -32,4 +49,4 @@ window.addEventListener('DOMContentLoaded', () => {
 //start button for screenpipe
 
 //pipe to detect when we can help user 
-//accept what agent sugegests 
+//accept what agent sugegests

@@ -1,4 +1,3 @@
-// Modules to control application life and create native browser window
 const { app, BrowserWindow, ipcMain, Notification } = require('electron')
 const path = require('path')
 const fs = require('fs')
@@ -26,9 +25,15 @@ function createWindow() {
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
-      preload: path.join(__dirname, 'preload.js')
+      preload: path.join(__dirname, 'preload.js'),
+      webSecurity: true
     }
   })
+
+  // In development, watch for changes
+  if (process.env.NODE_ENV === 'development') {
+    require('electron-reload')(__dirname)
+  }
 
   // and load the index.html of the app.
   const indexPath = path.join(__dirname, 'index.html')
@@ -42,8 +47,10 @@ function createWindow() {
     console.error('Failed to load:', errorCode, errorDescription)
   })
 
-  // Open the DevTools.
-  mainWindow.webContents.openDevTools()
+  // Open the DevTools in development
+  if (process.env.NODE_ENV === 'development') {
+    mainWindow.webContents.openDevTools()
+  }
 }
 
 // This method will be called when Electron has finished

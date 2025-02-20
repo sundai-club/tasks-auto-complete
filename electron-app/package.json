@@ -2,17 +2,39 @@
   "name": "task-auto-complete",
   "version": "1.0.0",
   "description": "AI-powered screen recording and task automation app",
-  "main": "main.js",
+  "main": "dist/main.js",
   "scripts": {
-    "start": "electron .",
+    "start": "npm run build && cross-env NODE_ENV=production electron .",
+    "dev": "concurrently \"cross-env NODE_ENV=development npm run watch\" \"wait-on dist/main.js && electron .\"",
+    "build": "npm run clean && npm run build:all",
+    "build:all": "tsc && npm run build:renderer",
+    "build:renderer": "esbuild src/index.tsx --bundle --outfile=dist/index.js --platform=browser && npm run copy-files",
+    "watch": "concurrently \"npm run watch:main\" \"npm run watch:renderer\"",
+    "watch:main": "tsc -w",
+    "watch:renderer": "esbuild src/index.tsx --bundle --outfile=dist/index.js --platform=browser --watch",
+    "clean": "rimraf dist",
+    "copy-files": "copyfiles -f src/index.html src/styles.css dist/",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "",
   "license": "MIT",
   "devDependencies": {
-    "electron": "^28.1.0"
+    "@types/node": "^20.0.0",
+    "@types/react": "^18.0.0",
+    "@types/react-dom": "^18.0.0",
+    "concurrently": "^8.0.0",
+    "copyfiles": "^2.4.1",
+    "cross-env": "^7.0.3",
+    "electron": "^28.1.0",
+    "electron-reload": "^1.5.0",
+    "esbuild": "^0.19.0",
+    "rimraf": "^5.0.10",
+    "typescript": "^5.0.0",
+    "wait-on": "^7.0.1"
   },
   "dependencies": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
     "sqlite3": "^5.1.7"
   }
-} 
+}
