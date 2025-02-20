@@ -1,7 +1,7 @@
-import { z } from "zod";
 import { generateObject } from "ai";
 import { createOpenAI } from "@ai-sdk/openai";
-import { pipe, ContentItem } from "@screenpipe/js";
+import { pipe, ContentItem, ScreenpipeQueryParams } from "@screenpipe/js";
+import { z } from "zod";
 
 interface BaseContent {
     timestamp?: string;
@@ -29,6 +29,7 @@ const computerLog = z.object({
 
 type ComputerLog = z.infer<typeof computerLog>;
 
+
 async function generateComputerLog(
     screenData: ContentItem[],
 ): Promise<ComputerLog> {
@@ -38,13 +39,14 @@ async function generateComputerLog(
     
     // First, let's extract all OCR text with context
     const ocrTexts = screenData
-        .filter(item => item.type === 'OCR' && 'text' in item.content)
-        .map(item => ({
-            text: String((item.content as OCRContent).text),
-            timestamp: (item.content as OCRContent).timestamp || new Date().toISOString(),
-            appName: (item.content as OCRContent).appName || 'unknown',
-            url: (item.content as OCRContent).url || '',
-            title: (item.content as OCRContent).title || ''
+        .filter(item => item.type === 'OCR')
+        .map(item => item.content as OCRContent)
+        .map(content => ({
+            text: content.text,
+            timestamp: content.timestamp || new Date().toISOString(),
+            appName: content.appName,
+            url: content.url || '',
+            title: content.title || ''
         }));
 
     console.log("\n=== OCR Text Entries ===");
@@ -60,14 +62,15 @@ async function generateComputerLog(
     // Then get UI interactions
     const uiActions = screenData
         .filter(item => item.type === 'UI')
-        .map(item => ({
-            action: (item.content as UIContent).action || '',
-            elementType: (item.content as UIContent).elementType || '',
-            elementText: (item.content as UIContent).elementText || '',
-            timestamp: (item.content as UIContent).timestamp || new Date().toISOString(),
-            appName: (item.content as UIContent).appName || 'unknown',
-            url: (item.content as UIContent).url || '',
-            title: (item.content as UIContent).title || ''
+        .map(item => item.content as UIContent)
+        .map(content => ({
+            action: content.action || '',
+            elementType: content.elementType || '',
+            elementText: content.elementText || '',
+            timestamp: content.timestamp || new Date().toISOString(),
+            appName: content.appName || 'unknown',
+            url: content.url || '',
+            title: content.title || ''
         }));
 
     console.log("\n=== UI Actions ===");
@@ -117,12 +120,12 @@ async function sendToInbox(title: string, body: string) {
     }
 }
 
-async function streamComputerLogsToMarkdown(): Promise<void> {
+async function streamComputerLogs(onlyChrome: boolean): Promise<void> {
     console.log("starting computer logs stream to markdown");
 
     const config = {
         interval: 60,
-    }
+    };
     console.log("loaded config:", JSON.stringify(config, null, 2));
 
     const interval = config.interval * 1000;
@@ -148,20 +151,22 @@ async function streamComputerLogsToMarkdown(): Promise<void> {
 
             // Query both OCR and UI interaction data
             console.log("Querying OCR data...");
-            const ocrData = await pipe.queryScreenpipe({
+            const baseOCRQuery: ScreenpipeQueryParams = {
                 startTime: oneHourAgo.toISOString(),
                 endTime: now.toISOString(),
                 limit: 50,
-                contentType: "ocr",
-            });
+                contentType: "ocr"
+            };
+            const ocrData = await pipe.queryScreenpipe(onlyChrome ? { ...baseOCRQuery, appName: "Chrome" } : baseOCRQuery);
             
             console.log("Querying UI data...");
-            const uiData = await pipe.queryScreenpipe({
+            const baseUIQuery: ScreenpipeQueryParams = {
                 startTime: oneHourAgo.toISOString(),
                 endTime: now.toISOString(),
                 limit: 50,
                 contentType: "ui",
-            });
+            };
+            const uiData = await pipe.queryScreenpipe(onlyChrome ? { ...baseUIQuery, appName: "Chrome" } : baseUIQuery);
 
             console.log("\n=== Raw Query Results ===");
             console.log("OCR data structure:", {
@@ -329,28 +334,6 @@ async function maybeProposeAgentAction(logEntries: ComputerLog[]): Promise<Strin
 }
 
 
-streamComputerLogsToMarkdown();
-
-/*
-
-Instructions to run this pipe:
-
-1. install dependencies:
-    ```
-    cd pipe/tasks-auto-complete
-    npm i ai @ai-sdk/openai @screenpipe/js zod
-    ```
-
-2. set environment variables:
-   ```
-   export OPENAI_API_KEY=your_openai_api_key
-   ```
-
-3. run the pipe:
-   ```
-   screenpipe pipe install pipe/tasks-auto-complete
-   screenpipe pipe enable tasks-auto-complete
-   screenpipe 
-   ```
-
-*/
+streamComputerLogs(true).catch(error => {
+    console.error("Error in streamComputerLogs:", error);
+});
