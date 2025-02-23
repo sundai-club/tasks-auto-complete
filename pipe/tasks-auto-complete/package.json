@@ -11,6 +11,8 @@
     "@ai-sdk/openai": "1.1.13",
     "@screenpipe/js": "1.0.12",
     "ai": "4.1.44",
+    "child_process": "1.0.2",
+    "util": "0.12.5",
     "zod": "3.24.2"
   }
 }
