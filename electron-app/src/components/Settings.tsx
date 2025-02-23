@@ -2,42 +2,27 @@ import React from 'react';
 
 interface SettingsProps {
   apiKey: string;
-  firstName: string;
-  lastName: string;
-  email: string;
-  hobbies: string;
+  about: string;
   isApiKeyVisible: boolean;
   message: { type: 'success' | 'error'; text: string; } | null;
   onApiKeyChange: (key: string) => void;
-  onFirstNameChange: (firstName: string) => void;
-  onLastNameChange: (lastName: string) => void;
-  onEmailChange: (email: string) => void;
-  onHobbiesChange: (hobbies: string) => void;
+  onAboutChange: (about: string) => void;
   onToggleApiKeyVisibility: () => void;
 }
 
 export const Settings: React.FC<SettingsProps> = ({
   apiKey,
-  firstName,
-  lastName,
-  email,
-  hobbies,
+  about,
   isApiKeyVisible,
   message,
   onApiKeyChange,
-  onFirstNameChange,
-  onLastNameChange,
-  onEmailChange,
-  onHobbiesChange,
+  onAboutChange,
   onToggleApiKeyVisibility,
 }) => {
   const handleSaveSettings = () => {
     const data = {
       apiKey,
-      firstName,
-      lastName,
-      email,
-      hobbies,
+      about,
     };
 
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
@@ -74,42 +59,11 @@ export const Settings: React.FC<SettingsProps> = ({
       </div>
       
       <div className="form-group">
-        <label>First Name</label>
-        <input
-          type="text"
-          value={firstName}
-          onChange={(e) => onFirstNameChange(e.target.value)}
-          placeholder="Enter your first name"
-        />
-      </div>
-      
-      <div className="form-group">
-        <label>Last Name</label>
-        <input
-          type="text"
-          value={lastName}
-          onChange={(e) => onLastNameChange(e.target.value)}
-          placeholder="Enter your last name"
-        />
-      </div>
-      
-      <div className="form-group">
-        <label>Email</label>
-        <input
-          type="email"
-          value={email}
-          onChange={(e) => onEmailChange(e.target.value)}
-          placeholder="Enter your email"
-        />
-      </div>
-      
-      <div className="form-group">
-        <label>Hobbies</label>
-        <input
-          type="text"
-          value={hobbies}
-          onChange={(e) => onHobbiesChange(e.target.value)}
-          placeholder="Enter your hobbies"
+        <label>Tell us more about yourself</label>
+        <textarea
+          value={about}
+          onChange={(e) => onAboutChange(e.target.value)}
+          placeholder="Share some details about your interests, background, or anything you'd like us to know..."
         />
       </div>
       
