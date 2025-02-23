@@ -7,6 +7,12 @@ interface ComputerLog {
     content: string;
 }
 
+interface FormDetectionResult {
+    hasForm: boolean;
+    url: string | null;
+    timestamp: string | null;
+}
+
 export class FormDetector {
     private readonly model: string = 'llama3.2';
     private readonly timeoutMs: number = 30000; // 30 second timeout
@@ -14,22 +20,72 @@ export class FormDetector {
     /**
      * Analyzes computer logs to detect web pages with empty forms
      * @param logs Array of ComputerLog entries to analyze
-     * @returns Promise<boolean> true if an empty form is detected
+     * @returns Promise<FormDetectionResult> containing form detection status and URL
      */
-    public async detectEmptyForms(logs: ComputerLog[]): Promise<boolean> {
+    public async detectEmptyForms(logs: ComputerLog[]): Promise<FormDetectionResult> {
         // Simplify the prompt to reduce complexity
-        const prompt = `Analyze this computer activity and respond with 'true' if you see an empty web form, or 'false' if not:\n${JSON.stringify(logs, null, 2)}`;
+        const prompt = `You are a JSON-only responder. Output ONLY a JSON object with no additional text.
 
-        console.log("\n=== Using Model ===\n", this.model);
+Required format:
+{
+    "hasForm": boolean,    // true if empty form detected
+    "url": string|null,    // URL of the page with form
+    "timestamp": string|null // ISO timestamp when form was detected
+}
+
+Example of valid response:
+{
+    "hasForm": true,
+    "url": "https://example.com/form",
+    "timestamp": "2023-09-01T10:00:00Z"
+}
+
+Your goal is to determine if these screen states contain an empty web form among them. If you find an empty form, you should return it's URL. Analyze these logs and respond with ONLY the JSON object, no other text:
+${JSON.stringify(logs, null, 2)}`;
+
+        console.log("\n=== Using Ollama Model ===\n", this.model);
         console.log("\n=== Prompt ===\n", prompt);
 
         try {
             const result = await this.runOllama(prompt);
-            console.log("\n=== LLM Response ===\n", result);
-            return result.toLowerCase().includes('true');
+            console.log("\n=== Ollama Response ===\n", result);
+
+            try {
+                // Extract JSON from the response if there's any extra text
+                const jsonMatch = result.match(/\{[\s\S]*\}/);
+                if (!jsonMatch) {
+                    throw new Error('No JSON found in response');
+                }
+
+                const jsonStr = jsonMatch[0];
+                const parsed = JSON.parse(jsonStr);
+
+                // Validate the parsed JSON has the required format
+                if (typeof parsed.hasForm !== 'boolean') {
+                    throw new Error('Invalid hasForm type');
+                }
+
+                return {
+                    hasForm: parsed.hasForm,
+                    url: typeof parsed.url === 'string' ? parsed.url : null,
+                    timestamp: typeof parsed.timestamp === 'string' ? parsed.timestamp : null
+                };
+            } catch (parseError) {
+                console.error('Error parsing LLM response:', parseError);
+                console.error('Raw response:', result);
+                return {
+                    hasForm: false,
+                    url: null,
+                    timestamp: null
+                };
+            }
         } catch (error) {
             console.error('Error in detectEmptyForms:', error);
-            return false;
+            return {
+                hasForm: false,
+                url: null,
+                timestamp: null
+            };
         }
     }
 

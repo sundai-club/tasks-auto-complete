@@ -30,13 +30,20 @@ const computerLog = z.object({
 
 type ComputerLog = z.infer<typeof computerLog>;
 
+interface UrlState {
+    lastChecked: string;  // timestamp
+    lastContent: string;  // hash or representation of the page content
+}
+
 class WorkflowMonitor {
     private formDetector: FormDetector;
     private userProfile: string;
+    private analyzedUrls: Map<string, UrlState>;
 
     constructor(userProfile: string) {
         this.formDetector = new FormDetector();
         this.userProfile = userProfile;
+        this.analyzedUrls = new Map();
     }
 
     private deduplicateEntries<T extends { timestamp: string }>(entries: T[], getKey: (entry: T) => string): T[] {
@@ -289,6 +296,23 @@ class WorkflowMonitor {
     }
 
 
+    private getPageContentHash(activity: any): string {
+        // Create a content hash from OCR and UI data
+        const content = [
+            ...activity.ocrData.map((ocr: any) => ocr.text),
+            ...activity.uiData.map((ui: any) => ui.text)
+        ].join('\n');
+        return content;
+    }
+
+    private shouldAnalyzeUrl(url: string, currentContent: string): boolean {
+        const prevState = this.analyzedUrls.get(url);
+        if (!prevState) return true; // New URL, never analyzed
+
+        // Check if content has changed
+        return prevState.lastContent !== currentContent;
+    }
+
     async checkForWorkflows(logEntries: ComputerLog[]): Promise<void> {
         console.log("\n=== Analyzing Log Entries ===");
         console.log("Number of entries:", logEntries.length);
@@ -309,23 +333,47 @@ class WorkflowMonitor {
         }
 
         const lastFive = allActivities.slice(-5);
+        const latestActivity = lastFive[lastFive.length - 1];
+        const currentContent = this.getPageContentHash(latestActivity);
+
         console.log("Number of activities being analyzed:", 
             lastFive.reduce((sum, act) => sum + act.ocrData.length + act.uiData.length, 0));
 
-        const hasEmptyForm = await this.formDetector.detectEmptyForms(lastFive);
-        await this.maybeProposeAgentAction(hasEmptyForm);
+        const formResult = await this.formDetector.detectEmptyForms(lastFive);
+        
+        if (formResult.hasForm && formResult.url) {
+            console.log("\n=== URL Analysis ===");
+            console.log("Detected form URL:", formResult.url);
+            console.log("Previously analyzed URLs:", Array.from(this.analyzedUrls.keys()));
+
+            if (this.shouldAnalyzeUrl(formResult.url, currentContent)) {
+                console.log("Analyzing URL - content changed or new URL");
+                await this.maybeProposeAgentAction(formResult);
+                
+                // Update URL state
+                this.analyzedUrls.set(formResult.url, {
+                    lastChecked: new Date().toISOString(),
+                    lastContent: currentContent
+                });
+            } else {
+                console.log("Skipping URL - no content changes detected");
+            }
+        }
     }
 
-    async maybeProposeAgentAction(hasEmptyForm: boolean): Promise<String | undefined> {
-        if (!hasEmptyForm) {
+    async maybeProposeAgentAction(formResult: { hasForm: boolean; url: string | null; timestamp: string | null }): Promise<String | undefined> {
+        if (!formResult.hasForm) {
             return;
         }
 
         console.log("\nCreating agent action proposal");
 
+        const urlInfo = formResult.url ? ` on page ${formResult.url}` : '';
+        const timeInfo = formResult.timestamp ? ` at ${formResult.timestamp}` : '';
+
         const prompt = `
             You are an intelligent task automation assistant. 
-            There is an empty form on a screen, which requires completion. 
+            There is an empty form${urlInfo}${timeInfo} that requires completion. 
             Analyze the screen state to suggest a task automation action.
         `;
 
