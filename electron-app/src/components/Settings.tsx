@@ -2,20 +2,26 @@ import React from 'react';
 
 interface SettingsProps {
   apiKey: string;
+  userProfile: string;
   isApiKeyVisible: boolean;
   message: { type: 'success' | 'error'; text: string; } | null;
   onApiKeyChange: (key: string) => void;
+  onProfileChange: (profile: string) => void;
   onToggleApiKeyVisibility: () => void;
   onSaveApiKey: () => void;
+  onSaveProfile: () => void;
 }
 
 export const Settings: React.FC<SettingsProps> = ({
   apiKey,
+  userProfile,
   isApiKeyVisible,
   message,
   onApiKeyChange,
+  onProfileChange,
   onToggleApiKeyVisibility,
-  onSaveApiKey
+  onSaveApiKey,
+  onSaveProfile
 }) => {
   return (
     <div className="card">
@@ -40,12 +46,27 @@ export const Settings: React.FC<SettingsProps> = ({
         <button className="primary-button" onClick={onSaveApiKey}>
           Save API Key
         </button>
-        {message && (
-          <div className={`message ${message.type}`}>
-            {message.text}
-          </div>
-        )}
       </div>
+
+      <div className="form-group">
+        <label>Your Profile</label>
+        <textarea
+          value={userProfile}
+          onChange={(e) => onProfileChange(e.target.value)}
+          placeholder="Tell us about yourself, your role, and interests. This helps provide better context to AI responses."
+          rows={4}
+          className="profile-input"
+        />
+        <button className="primary-button" onClick={onSaveProfile}>
+          Save Profile
+        </button>
+      </div>
+
+      {message && (
+        <div className={`message ${message.type}`}>
+          {message.text}
+        </div>
+      )}
     </div>
   );
 };

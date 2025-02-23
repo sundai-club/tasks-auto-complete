@@ -8,6 +8,8 @@ declare global {
       runAssistant: (taskDescription: string) => Promise<{ success: boolean; output?: string; error?: string }>;
       onNewTask: (callback: (task: Task) => void) => () => void;
       onNotificationAction: (callback: (action: 'accept' | 'ignore') => void) => () => void;
+      getProfile: () => Promise<{ success: boolean; profile: string; error?: string }>;
+      saveProfile: (profile: string) => Promise<{ success: boolean; error?: string }>;
     };
   }
 }
