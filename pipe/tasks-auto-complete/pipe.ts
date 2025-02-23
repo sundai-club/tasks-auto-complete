@@ -375,6 +375,9 @@ class WorkflowMonitor {
             You are an intelligent task automation assistant. 
             There is an empty form${urlInfo}${timeInfo} that requires completion. 
             Analyze the screen state to suggest a task automation action.
+            Include detailed step by step instruction on how to fill the form. For field in the form use following info aobut the user:
+            ${this.userProfile}
+            For fields in the form that are not described in the user profile just fill in some info on your best idea of how it should be filled for getting the best results.
         `;
 
         console.log("\n=== Sending to LLM ===");        
@@ -397,7 +400,7 @@ class WorkflowMonitor {
 
         const { task, confidence } = response.object;        
         // Format the task on one line, removing any newlines and extra spaces
-        const formattedTask = `TASK (${Math.round(confidence * 100)}% confidence): ${task.replace(/\s+/g, ' ').trim()}`;
+        const formattedTask = `TASK: ${task.replace(/\s+/g, ' ').trim()}`;
         console.log(formattedTask);
 
         // Use the new sendToInbox function
