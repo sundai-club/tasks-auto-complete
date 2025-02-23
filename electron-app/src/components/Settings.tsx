@@ -8,6 +8,7 @@ interface SettingsProps {
   onApiKeyChange: (key: string) => void;
   onAboutChange: (about: string) => void;
   onToggleApiKeyVisibility: () => void;
+  onSaveApiKey: () => void;
 }
 
 export const Settings: React.FC<SettingsProps> = ({
@@ -18,23 +19,8 @@ export const Settings: React.FC<SettingsProps> = ({
   onApiKeyChange,
   onAboutChange,
   onToggleApiKeyVisibility,
+  onSaveApiKey
 }) => {
-  const handleSaveSettings = () => {
-    const data = {
-      apiKey,
-      about,
-    };
-
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = 'settings.json';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
-
   return (
     <div className="card">
       <h2>Settings</h2>
@@ -63,12 +49,12 @@ export const Settings: React.FC<SettingsProps> = ({
         <textarea
           value={about}
           onChange={(e) => onAboutChange(e.target.value)}
-          placeholder="Share some details about your interests, background, or anything you'd like us to know..."
+          placeholder="Enter your profile details..."
         />
       </div>
       
-      <button className="primary-button" onClick={handleSaveSettings}>
-        Save Settings
+      <button className="primary-button" onClick={onSaveApiKey}>
+        Save API Key
       </button>
       
       {message && (
