@@ -6,13 +6,15 @@ interface DashboardProps {
   tasks: Task[];
   message: { type: 'success' | 'error'; text: string; } | null;
   onToggleRecording: () => void;
+  onTaskAction: (task: Task, action: 'accept' | 'ignore') => void;
 }
 
 export const Dashboard: React.FC<DashboardProps> = ({ 
   isRecording, 
   tasks, 
   message, 
-  onToggleRecording 
+  onToggleRecording,
+  onTaskAction
 }) => {
   return (
     <>
@@ -45,8 +47,24 @@ export const Dashboard: React.FC<DashboardProps> = ({
               </div>
             </div>
             <div className="task-actions">
-              <button className="primary-button">Accept</button>
-              <button className="secondary-button">Ignore</button>
+              <button 
+                className="primary-button"
+                onClick={() => {
+                  console.log('Accepting task:', task);
+                  onTaskAction(task, 'accept');
+                }}
+              >
+                Accept
+              </button>
+              <button 
+                className="secondary-button"
+                onClick={() => {
+                  console.log('Ignoring task:', task);
+                  onTaskAction(task, 'ignore');
+                }}
+              >
+                Ignore
+              </button>
             </div>
           </div>
         ))}

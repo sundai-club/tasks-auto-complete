@@ -8,6 +8,7 @@ export function App() {
   const [apiKey, setApiKey] = useState('');
   const [isRecording, setIsRecording] = useState(false);
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [processingTask, setProcessingTask] = useState<string | null>(null);
   const [message, setMessage] = useState<Message | null>(null);
   const [isApiKeyVisible, setIsApiKeyVisible] = useState(false);
 
@@ -22,9 +23,7 @@ export function App() {
 
     // Set up notification action listener with cleanup
     const cleanupNotificationListener = window.electronAPI.onNotificationAction((action) => {
-      if (action === 'accept') {
-        console.log('Task accepted');
-      }
+      console.log('Notification action received:', action);
     });
 
     // Cleanup function
@@ -89,15 +88,22 @@ export function App() {
         <button 
           className={`nav-button ${currentPage === 'dashboard' ? 'active' : ''}`}
           onClick={() => setCurrentPage('dashboard')}
+          disabled={processingTask !== null}
         >
           Dashboard
         </button>
         <button 
           className={`nav-button ${currentPage === 'settings' ? 'active' : ''}`}
           onClick={() => setCurrentPage('settings')}
+          disabled={processingTask !== null}
         >
           Settings
         </button>
+        {processingTask && (
+          <div className="processing-indicator">
+            Processing task...
+          </div>
+        )}
       </div>
 
       <div className="main-content">
@@ -107,6 +113,32 @@ export function App() {
             tasks={tasks}
             message={message}
             onToggleRecording={toggleRecording}
+            onTaskAction={async (task, action) => {
+              console.log(`Task ${action}:`, task);
+              try {
+                setProcessingTask(task.description);
+                
+                if (action === 'accept') {
+                  const result = await window.electronAPI.runAssistant(task.description);
+                  if (result.success) {
+                    setMessage({ type: 'success', text: 'Task executed successfully' });
+                  } else {
+                    throw new Error(result.error || 'Failed to execute task');
+                  }
+                }
+                
+                // Remove the task from the list
+                setTasks(prev => prev.filter(t => t.description !== task.description));
+              } catch (error) {
+                console.error('Task action error:', error);
+                setMessage({ 
+                  type: 'error', 
+                  text: `Failed to process task: ${error instanceof Error ? error.message : 'Unknown error'}` 
+                });
+              } finally {
+                setProcessingTask(null);
+              }
+            }}
           />
         )}
         {currentPage === 'settings' && (
