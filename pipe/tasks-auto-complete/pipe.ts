@@ -39,6 +39,18 @@ class WorkflowMonitor {
         this.userProfile = userProfile;
     }
 
+    private deduplicateEntries<T extends { timestamp: string }>(entries: T[], getKey: (entry: T) => string): T[] {
+        const uniqueEntries = new Map<string, T>();
+        entries.forEach(entry => {
+            const key = getKey(entry);
+            const existing = uniqueEntries.get(key);
+            if (!existing || new Date(entry.timestamp) > new Date(existing.timestamp)) {
+                uniqueEntries.set(key, entry);
+            }
+        });
+        return Array.from(uniqueEntries.values());
+    }
+
     async generateComputerLog(
         screenData: ContentItem[],
     ): Promise<ComputerLog> {
@@ -46,8 +58,8 @@ class WorkflowMonitor {
         console.log("Number of items:", screenData.length);
         console.log("DEBUG: Raw screen data received:", JSON.stringify(screenData, null, 2));
         
-        // First, let's extract all OCR text with context
-        const ocrTexts = screenData
+        // First, let's extract and deduplicate OCR text
+        const rawOcrTexts = screenData
             .filter(item => item.type === 'OCR')
             .map(item => item.content as OCRContent)
             .map(content => ({
@@ -58,18 +70,29 @@ class WorkflowMonitor {
                 title: content.title || ''
             }));
 
+        const ocrTexts = this.deduplicateEntries(rawOcrTexts, entry => {
+            // Create a key that ignores timestamp
+            return JSON.stringify({
+                text: entry.text,
+                appName: entry.appName,
+                url: entry.url,
+                title: entry.title
+            });
+        });
+
         console.log("\n=== OCR Text Entries ===");
-        console.log("Number of OCR entries:", ocrTexts.length);
+        console.log("Number of raw OCR entries:", rawOcrTexts.length);
+        console.log("Number of unique OCR entries:", ocrTexts.length);
         if (ocrTexts.length > 0) {
-            console.log("Sample OCR texts:", ocrTexts.slice(0, 3).map(entry => ({
+            console.log("Sample unique OCR texts:", ocrTexts.slice(0, 3).map(entry => ({
                 text: entry.text.substring(0, 100) + (entry.text.length > 100 ? '...' : ''),
                 appName: entry.appName,
                 timestamp: entry.timestamp
             })));
         }
 
-        // Then get UI interactions
-        const uiActions = screenData
+        // Then get and deduplicate UI interactions
+        const rawUiActions = screenData
             .filter(item => item.type === 'UI')
             .map(item => item.content as UIContent)
             .map(content => ({
@@ -82,10 +105,23 @@ class WorkflowMonitor {
                 title: content.title || ''
             }));
 
+        const uiActions = this.deduplicateEntries(rawUiActions, entry => {
+            // Create a key that ignores timestamp
+            return JSON.stringify({
+                action: entry.action,
+                elementType: entry.elementType,
+                elementText: entry.elementText,
+                appName: entry.appName,
+                url: entry.url,
+                title: entry.title
+            });
+        });
+
         console.log("\n=== UI Actions ===");
-        console.log("Number of UI actions:", uiActions.length);
+        console.log("Number of raw UI actions:", rawUiActions.length);
+        console.log("Number of unique UI actions:", uiActions.length);
         if (uiActions.length > 0) {
-            console.log("Sample UI actions:", uiActions.slice(0, 3));
+            console.log("Sample unique UI actions:", uiActions.slice(0, 3));
         }
 
         // Combine all activities with proper context
@@ -294,20 +330,26 @@ class WorkflowMonitor {
         `;
 
         console.log("\n=== Sending to LLM ===");        
-        const provider = createOpenAI({apiKey: process.env.OPENAI_API_KEY})("gpt-4o-mini");
+        const provider = createOpenAI({apiKey: process.env.OPENAI_API_KEY})("gpt-4");
+
+        const taskSchema = z.object({
+            task: z.string().describe('The suggested task automation action'),
+            confidence: z.number().min(0).max(1).describe('Confidence level in the suggestion')
+        });
 
         const response = await generateObject({
             model: provider,
             messages: [{ role: "user", content: prompt }],
-            schema: z.string()
+            schema: taskSchema,
+            temperature: 0.7
         });
 
         console.log("\n=== LLM Response ===");
         console.log("DEBUG: AI response:", response);
 
-        const task = response.object;        
+        const { task, confidence } = response.object;        
         // Format the task on one line, removing any newlines and extra spaces
-        const formattedTask = `TASK: ${task.replace(/\s+/g, ' ').trim()}`;
+        const formattedTask = `TASK (${Math.round(confidence * 100)}% confidence): ${task.replace(/\s+/g, ' ').trim()}`;
         console.log(formattedTask);
 
         // Use the new sendToInbox function
