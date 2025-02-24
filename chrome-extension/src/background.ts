@@ -148,6 +148,9 @@ async function analyzePageContent(dom: string) {
 };
 
 async function generateFormFillingPlan(dom: string) {
+    // Get the current tab's URL
+    const [tab] = await chrome.tabs.query({active: true, currentWindow: true});
+    const pageUrl = tab?.url || 'unknown';
     try {
         const response = await fetch('http://localhost:11435/api/generate', {
             method: 'POST',
@@ -158,6 +161,9 @@ async function generateFormFillingPlan(dom: string) {
                 model: 'gpt-4o-mini',
                 prompt: `Given this HTML form and user profile, create a step-by-step plan for filling out the form. 
                 Consider the context and purpose of the form. Format the response as a numbered list of steps.
+                Make sure to include any relevant context from the page URL.
+
+                Page URL: ${pageUrl}
 
                 User Profile:
                 ${userProfile}
@@ -179,6 +185,38 @@ async function generateFormFillingPlan(dom: string) {
 
         // Store the plan in extension's storage for later use
         chrome.storage.local.set({ formFillingPlan: data.response });
+
+        // Execute the Python assistant with the task
+        try {
+            const response = await fetch('http://localhost:11435/run-assistant', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    taskDescription: `Fill out form at ${pageUrl} according to this plan:\n${data.response}`
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error(`Assistant API error: ${response.status}`);
+            }
+
+            const result = await response.json();
+            console.log('Assistant execution result:', result);
+
+            // Show success notification
+            await showNotification('assistantComplete', {
+                title: 'Form Assistant Ready',
+                message: 'The assistant is ready to help fill out the form'
+            });
+        } catch (error) {
+            console.error('Error executing assistant:', error);
+            await showNotification('assistantError', {
+                title: 'Assistant Error',
+                message: 'Failed to start the form filling assistant'
+            });
+        }
     } catch (error) {
         console.error('Error generating form filling plan:', error);
     }

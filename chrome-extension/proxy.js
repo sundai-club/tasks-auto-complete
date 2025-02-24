@@ -1,6 +1,9 @@
 const express = require('express');
 const cors = require('cors');
 const fetch = require('node-fetch');
+const path = require('path');
+const fs = require('fs');
+const { spawn } = require('child_process');
 
 const app = express();
 
@@ -117,6 +120,70 @@ app.post('/api/generate', async (req, res) => {
         }
     } catch (error) {
         console.error('Proxy error:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Handle running the Python assistant
+app.post('/run-assistant', async (req, res) => {
+    try {
+        console.log('Running assistant with task:', req.body.taskDescription);
+
+        const agentDir = path.join(__dirname, '..', 'agent');
+        const pythonScript = path.join(agentDir, 'assistant.py');
+        const venvPython = path.join(agentDir, '.venv', 'bin', 'python');
+
+        // Verify paths exist
+        if (!fs.existsSync(pythonScript)) {
+            throw new Error(`Assistant script not found at ${pythonScript}`);
+        }
+        if (!fs.existsSync(venvPython)) {
+            throw new Error('Python virtual environment not found');
+        }
+
+        // Escape the task description for command line
+        const escapedTask = JSON.stringify(req.body.taskDescription);
+
+        const pythonProcess = spawn(venvPython, [
+            pythonScript,
+            process.env.OPENAI_API_KEY,
+            escapedTask
+        ], {
+            env: { ...process.env },
+            cwd: agentDir
+        });
+
+        let output = '';
+        let error = '';
+
+        pythonProcess.stdout.on('data', (data) => {
+            const text = data.toString();
+            output += text;
+            console.log('Python output:', text);
+        });
+
+        pythonProcess.stderr.on('data', (data) => {
+            const text = data.toString();
+            error += text;
+            console.error('Python error:', text);
+        });
+
+        pythonProcess.on('close', (code) => {
+            if (code === 0) {
+                res.json({ success: true, output });
+            } else {
+                // Check for specific error types
+                if (error.includes('invalid_api_key')) {
+                    res.status(500).json({ error: 'Invalid OpenAI API key' });
+                } else if (error.includes('No module named')) {
+                    res.status(500).json({ error: 'Missing Python dependencies' });
+                } else {
+                    res.status(500).json({ error: error || 'Assistant failed to run' });
+                }
+            }
+        });
+    } catch (error) {
+        console.error('Error running assistant:', error);
         res.status(500).json({ error: error.message });
     }
 });

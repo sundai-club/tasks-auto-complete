@@ -10,7 +10,8 @@
     "activeTab",
     "scripting",
     "notifications",
-    "storage"
+    "storage",
+    "tabs"
   ],
   "host_permissions": [
     "http://localhost:11434/*",
