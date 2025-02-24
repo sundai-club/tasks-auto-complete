@@ -1,0 +1,17 @@
+{
+  "name": "form-analysis-assistant",
+  "version": "1.0.0",
+  "description": "Chrome extension for form analysis using Deepseek models",
+  "scripts": {
+    "copy-icons": "mkdir -p dist/icons && cp -r icons/* dist/icons/",
+    "build": "tsc && npm run copy-icons",
+    "watch": "tsc -w"
+  },
+  "devDependencies": {
+    "@types/chrome": "^0.0.260",
+    "typescript": "^5.3.3",
+    "express": "^4.18.2",
+    "cors": "^2.8.5",
+    "node-fetch": "^2.6.7"
+  }
+}

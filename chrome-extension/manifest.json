@@ -1,0 +1,37 @@
+{
+  "manifest_version": 3,
+  "name": "Form Analysis Assistant",
+  "version": "1.0",
+  "description": "Analyzes web forms using Deepseek models and provides filling suggestions",
+  "icons": {
+    "48": "dist/icons/icon48.png"
+  },
+  "permissions": [
+    "activeTab",
+    "scripting",
+    "notifications",
+    "storage"
+  ],
+  "host_permissions": [
+    "http://localhost:11434/*",
+    "http://localhost:11435/*",
+    "http://localhost/*"
+  ],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; connect-src 'self' http://localhost:11434 http://localhost:11435; object-src 'self'"
+  },
+  "web_accessible_resources": [{
+    "resources": ["icons/*"],
+    "matches": ["<all_urls>"]
+  }],
+  "background": {
+    "service_worker": "dist/background.js",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["dist/content.js"]
+    }
+  ]
+}
