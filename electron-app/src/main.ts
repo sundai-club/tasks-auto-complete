@@ -23,22 +23,41 @@ let screenpipeProcess: ChildProcess | null = null;
 let assistantProcess: ChildProcess | null = null;
 
 // Function to kill the assistant process
-function killAssistantProcess() {
+async function killAssistantProcess() {
   if (assistantProcess) {
     console.log('Killing assistant process...');
     try {
-      // Send SIGTERM first for graceful shutdown
-      assistantProcess.kill('SIGTERM');
-      
-      // Force kill after 2 seconds if still running
-      setTimeout(() => {
-        if (assistantProcess) {
-          console.log('Force killing assistant process...');
-          assistantProcess.kill('SIGKILL');
+      // Check if process is still running
+      try {
+        process.kill(assistantProcess.pid!, 0);
+      } catch (e) {
+        if ((e as NodeJS.ErrnoException).code === 'ESRCH') {
+          console.log('Process already terminated');
+          assistantProcess = null;
+          return;
         }
-      }, 2000);
+      }
+
+      // Send SIGTERM first for graceful shutdown
+      process.kill(assistantProcess.pid!, 'SIGTERM');
+      await new Promise(resolve => setTimeout(resolve, 2000));
+
+      // Check if process is still running after SIGTERM
+      try {
+        process.kill(assistantProcess.pid!, 0);
+        // If we get here, process is still running, force kill it
+        console.log('Force killing assistant process...');
+        process.kill(assistantProcess.pid!, 'SIGKILL');
+      } catch (e) {
+        if ((e as NodeJS.ErrnoException).code !== 'ESRCH') {
+          throw e;
+        }
+        // Process not found, which means it's already terminated
+        console.log('Process terminated');
+      }
     } catch (error) {
       console.error('Error killing assistant process:', error);
+      throw error;
     } finally {
       assistantProcess = null;
     }
@@ -384,7 +403,10 @@ ipcMain.handle('start-screenpipe', async () => {
 // Handle stopping the assistant
 ipcMain.handle('stop-assistant', async () => {
   try {
-    killAssistantProcess();
+    await killAssistantProcess();
+    if (mainWindow) {
+      mainWindow.webContents.send('assistant-stopped');
+    }
     return { success: true };
   } catch (error) {
     console.error('Error stopping assistant:', error);
