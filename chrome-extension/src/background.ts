@@ -21,7 +21,7 @@ async function analyzePageContent(dom: string) {
     try {
         console.log('Sending page for analysis...');
         const requestBody = {
-            model: 'llama3.2',
+            model: 'gpt-4o-mini',
             prompt: `You are a JSON-only API. Your task is to analyze HTML and determine if it contains any empty forms.
             
             Rules:
@@ -75,8 +75,8 @@ async function analyzePageContent(dom: string) {
             const data = JSON.parse(result);
             console.log('Parsed data:', data);
 
-            const parsedResponse = JSON.parse(data.response?.trim() || '{}');
-            const hasEmptyForms = parsedResponse.hasEmptyForms === true;
+            // Try to parse the response, handling both direct JSON and cleaned markdown
+            const hasEmptyForms = result.includes('true');
             console.log('Has empty forms:', hasEmptyForms);
 
             if (hasEmptyForms) {
