@@ -242,6 +242,20 @@ ipcMain.handle('start-screenpipe', async () => {
       return { success: false, error: 'Recording already in progress' };
     }
 
+    const settingsPath: string = path.join(app.getPath('userData'), 'settings.json');
+    if (!fs.existsSync(settingsPath)) {
+      throw new Error('OpenAI API key not found. Please add your API key in the Settings tab.');
+    }
+
+    const settings: Settings = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
+    const apiKey = settings.apiKey;
+    
+    // Save profile to temp directory
+    const tmpDir = require('os').tmpdir();
+    const profilePath = path.join(tmpDir, 'tasks-auto-complete-profile.txt');
+    fs.writeFileSync(profilePath, settings.userProfile || '', 'utf8');
+    console.log('Saved user profile to:', profilePath);
+
     try {
       await new Promise<void>((resolve, reject) => {
         const check = spawn('screenpipe', ['--version'], { shell: true });
@@ -261,14 +275,6 @@ ipcMain.handle('start-screenpipe', async () => {
     }
 
     console.log('Starting screenpipe process...');
-
-    const settingsPath: string = path.join(app.getPath('userData'), 'settings.json');
-    if (!fs.existsSync(settingsPath)) {
-      throw new Error('OpenAI API key not found. Please add your API key in the Settings tab.');
-    }
-
-    const settings: Settings = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
-    const apiKey = settings.apiKey;
 
     screenpipeProcess = spawn('screenpipe', ['--disable-telemetry'], {
       shell: true,

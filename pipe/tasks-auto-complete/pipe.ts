@@ -3,6 +3,8 @@ import { createOpenAI } from "@ai-sdk/openai";
 import { pipe, ContentItem, ScreenpipeQueryParams } from "@screenpipe/js";
 import { z } from "zod";
 import { FormDetector } from "./FormDetector";
+import * as fs from 'fs';
+import * as path from 'path';
 
 interface BaseContent {
     timestamp?: string;
@@ -39,11 +41,25 @@ class WorkflowMonitor {
     private formDetector: FormDetector;
     private userProfile: string;
     private analyzedUrls: Map<string, UrlState>;
+    private readonly profilePath: string;
 
     constructor(userProfile: string) {
         this.formDetector = new FormDetector();
         this.userProfile = userProfile;
         this.analyzedUrls = new Map();
+        this.profilePath = path.join(require('os').tmpdir(), 'tasks-auto-complete-profile.txt');
+    }
+
+    private async reloadProfile(): Promise<void> {
+        try {
+            const newProfile = await fs.promises.readFile(this.profilePath, 'utf8');
+            if (newProfile !== this.userProfile) {
+                console.log('Profile updated, reloading...');
+                this.userProfile = newProfile;
+            }
+        } catch (error) {
+            console.error('Failed to reload profile:', error);
+        }
     }
 
     private deduplicateEntries<T extends { timestamp: string }>(entries: T[], getKey: (entry: T) => string): T[] {
@@ -183,8 +199,6 @@ class WorkflowMonitor {
         const interval = config.interval * 1000;
         const lookbackPeriod = 3600 * 1000; // Look back 1 hour instead of just interval seconds
 
-        
-
         await this.sendToInbox(
             "computer log stream started",
             `monitoring computer work every ${config.interval} seconds, looking back 1 hour`
@@ -194,6 +208,9 @@ class WorkflowMonitor {
 
         while (true) {
             try {
+                // Reload profile before processing new entries
+                await this.reloadProfile();
+
                 const now = new Date();
                 const oneHourAgo = new Date(now.getTime() - lookbackPeriod);
 
@@ -378,6 +395,7 @@ class WorkflowMonitor {
             Include detailed step by step instruction on how to fill the form. For field in the form use following info aobut the user:
             ${this.userProfile}
             For fields in the form that are not described in the user profile just fill in some info on your best idea of how it should be filled for getting the best results.
+            Format every step on a new line.
         `;
 
         console.log("\n=== Sending to LLM ===");        
@@ -409,10 +427,18 @@ class WorkflowMonitor {
     }
 }
 
-const profile = `
-name: Alexander Ivkin
-email: mit@ivkin.dev
-`;
+let profile = '';
+try {
+    const tmpDir = require('os').tmpdir();
+    const profilePath = path.join(tmpDir, 'tasks-auto-complete-profile.txt');
+    profile = fs.readFileSync(profilePath, 'utf8');
+    console.log('Loaded user profile from:', profilePath);
+    console.log('User profile:', profile);
+} catch (error) {
+    console.error('Failed to read user profile:', error);
+    profile = 'Failed to load user profile';
+}
+
 const monitor = new WorkflowMonitor(profile);
 
 monitor.streamComputerLogs(true).catch(error => {
