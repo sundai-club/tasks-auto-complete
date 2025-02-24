@@ -8,7 +8,7 @@ interface DashboardProps {
   message: { type: 'success' | 'error'; text: string; } | null;
   isAssistantActive: boolean;
   onToggleRecording: () => void;
-  onTaskAction: (task: Task, action: 'accept' | 'ignore') => Promise<void>;
+  onTaskAction: (task: Task, action: 'accept' | 'ignore', editedDescription?: string) => Promise<void>;
   onStopAssistant: () => Promise<void>;
 }
 
@@ -21,17 +21,32 @@ export const Dashboard: React.FC<DashboardProps> = ({
   onTaskAction,
   onStopAssistant
 }) => {
-  const [processing, setProcessing] = React.useState<string | null>(null);
+  const [processingTaskId, setProcessingTaskId] = React.useState<string | null>(null);
+  const [editingTaskId, setEditingTaskId] = React.useState<string | null>(null);
+  const [editedDescription, setEditedDescription] = React.useState<string>('');
 
   const startProcessing = async (task: Task) => {
     try {
-      setProcessing(task.description);
-      await onTaskAction(task, 'accept');
+      const description = editingTaskId === task.id ? editedDescription : task.description;
+      setProcessingTaskId(task.id);
+      await onTaskAction(task, 'accept', description);
+      setEditingTaskId(null);
+      setEditedDescription('');
     } catch (error) {
       console.error('Error processing task:', error);
     } finally {
-      setProcessing(null);
+      setProcessingTaskId(null);
     }
+  };
+
+  const handleEdit = (task: Task) => {
+    setEditingTaskId(task.id);
+    setEditedDescription(task.description);
+  };
+
+  const handleCancelEdit = () => {
+    setEditingTaskId(null);
+    setEditedDescription('');
   };
 
   React.useEffect(() => {
@@ -76,12 +91,26 @@ export const Dashboard: React.FC<DashboardProps> = ({
                   maxWidth: '100%',
                   overflow: 'hidden'
                 }}>
-                  <ReactMarkdown>{task.description.trim()}</ReactMarkdown>
+                  {editingTaskId === task.id ? (
+                    <textarea
+                      value={editedDescription}
+                      onChange={(e) => setEditedDescription(e.target.value)}
+                      style={{
+                        width: '100%',
+                        minHeight: '100px',
+                        padding: '8px',
+                        marginBottom: '8px',
+                        resize: 'vertical'
+                      }}
+                    />
+                  ) : (
+                    <ReactMarkdown>{task.description.trim()}</ReactMarkdown>
+                  )}
                 </div>
               </div>
             </div>
             <div className="task-actions">
-              {processing === task.description ? (
+              {processingTaskId === task.id ? (
                 <div className="processing-container">
                   <div className="processing">Processing...</div>
                   <button
@@ -100,7 +129,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                     Ignore
                   </button>
                 </div>
-              ) : (
+              ) : editingTaskId === task.id ? (
                 <>
                   <button 
                     className="primary-button"
@@ -108,7 +137,22 @@ export const Dashboard: React.FC<DashboardProps> = ({
                       startProcessing(task);
                     }}
                   >
-                    Accept
+                    Save & Accept
+                  </button>
+                  <button 
+                    className="secondary-button"
+                    onClick={handleCancelEdit}
+                  >
+                    Cancel
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button 
+                    className="primary-button"
+                    onClick={() => handleEdit(task)}
+                  >
+                    Edit
                   </button>
                   <button 
                     className="secondary-button"

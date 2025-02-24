@@ -18,6 +18,7 @@ declare global {
 }
 
 export interface Task {
+  id: string;
   description: string;
   timestamp: string;
 }

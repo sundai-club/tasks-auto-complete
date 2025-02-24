@@ -14,6 +14,7 @@ interface Settings {
 }
 
 interface Task {
+  id: string;
   description: string;
   timestamp: string;
 }
@@ -78,8 +79,12 @@ expressApp.post('/new-task', (req, res) => {
     const { description, timestamp } = req.body;
     console.log('Received new task:', { description, timestamp });
 
-    // Create task object
-    const task: Task = { description, timestamp };
+    // Create task object with unique ID
+    const task: Task = {
+      id: `task-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      description,
+      timestamp
+    };
     
     // Show notification
     showNotificationWithActions(task);
@@ -241,6 +246,7 @@ function parseTasksFromOutput(output: string): Task[] {
   let match: RegExpExecArray | null;
   while ((match = taskRegex.exec(output)) !== null) {
     const task: Task = {
+      id: `task-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       description: match[1].trim(),
       timestamp: new Date().toISOString()
     };

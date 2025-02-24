@@ -9,7 +9,7 @@ export function App() {
   const [isRecording, setIsRecording] = useState(false);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [isAssistantActive, setIsAssistantActive] = useState(false);
-  const [processingTask, setProcessingTask] = useState<string | null>(null);
+  const [processingTaskId, setProcessingTaskId] = useState<string | null>(null);
   const [message, setMessage] = useState<Message | null>(null);
   const [isApiKeyVisible, setIsApiKeyVisible] = useState(false);
   const [userProfile, setUserProfile] = useState('');
@@ -31,12 +31,12 @@ export function App() {
 
     // Set up task processing listeners
     const cleanupProcessingListener = window.electronAPI.onTaskProcessing((task: Task) => {
-      setProcessingTask(task.description);
+      setProcessingTaskId(task.id);
       setIsAssistantActive(true);
     });
 
     const cleanupProcessingDoneListener = window.electronAPI.onTaskProcessingDone((task: Task) => {
-      setProcessingTask(null);
+      setProcessingTaskId(null);
       setIsAssistantActive(false);
       setTasks(prev => prev.filter(t => t.description !== task.description));
     });
@@ -147,18 +147,18 @@ export function App() {
         <button 
           className={`nav-button ${currentPage === 'dashboard' ? 'active' : ''}`}
           onClick={() => setCurrentPage('dashboard')}
-          disabled={processingTask !== null}
+          disabled={processingTaskId !== null}
         >
           Dashboard
         </button>
         <button 
           className={`nav-button ${currentPage === 'settings' ? 'active' : ''}`}
           onClick={() => setCurrentPage('settings')}
-          disabled={processingTask !== null}
+          disabled={processingTaskId !== null}
         >
           Settings
         </button>
-        {processingTask && (
+        {processingTaskId && (
           <div className="processing-indicator">
             Processing task...
           </div>
@@ -174,15 +174,16 @@ export function App() {
             isAssistantActive={isAssistantActive}
             onToggleRecording={toggleRecording}
             onStopAssistant={handleStopAssistant}
-            onTaskAction={async (task, action) => {
-              console.log(`Task ${action}:`, task);
+            onTaskAction={async (task, action, editedDescription) => {
+              console.log(`Task ${action}:`, task, editedDescription);
               try {
-                setProcessingTask(task.description);
+                const description = editedDescription || task.description;
+                setProcessingTaskId(task.id);
                 
                 if (action === 'accept') {
                   setIsAssistantActive(true);
                   try {
-                    const result = await window.electronAPI.runAssistant(task.description);
+                    const result = await window.electronAPI.runAssistant(description);
                     if (result.success) {
                       setMessage({ type: 'success', text: 'Task executed successfully' });
                     } else {
@@ -194,7 +195,7 @@ export function App() {
                 }
                 
                 // Remove the task from the list
-                setTasks(prev => prev.filter(t => t.description !== task.description));
+                setTasks(prev => prev.filter(t => t.id !== task.id));
               } catch (error) {
                 console.error('Task action error:', error);
                 setMessage({ 
@@ -202,7 +203,7 @@ export function App() {
                   text: `Failed to process task: ${error instanceof Error ? error.message : 'Unknown error'}` 
                 });
               } finally {
-                setProcessingTask(null);
+                setProcessingTaskId(null);
               }
             }}
           />
