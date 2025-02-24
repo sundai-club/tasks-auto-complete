@@ -6,7 +6,7 @@ interface DashboardProps {
   tasks: Task[];
   message: { type: 'success' | 'error'; text: string; } | null;
   onToggleRecording: () => void;
-  onTaskAction: (task: Task, action: 'accept' | 'ignore') => void;
+  onTaskAction: (task: Task, action: 'accept' | 'ignore') => Promise<void>;
 }
 
 export const Dashboard: React.FC<DashboardProps> = ({ 
@@ -16,6 +16,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
   onToggleRecording,
   onTaskAction
 }) => {
+  const [processing, setProcessing] = React.useState<string | null>(null);
+
   return (
     <>
       <div className="card">
@@ -49,19 +51,24 @@ export const Dashboard: React.FC<DashboardProps> = ({
             <div className="task-actions">
               <button 
                 className="primary-button"
-                onClick={() => {
-                  console.log('Accepting task:', task);
-                  onTaskAction(task, 'accept');
+                disabled={processing === task.description}
+                onClick={async () => {
+                  try {
+                    setProcessing(task.description);
+                    await onTaskAction(task, 'accept');
+                  } catch (error) {
+                    console.error('Error processing task:', error);
+                  } finally {
+                    setProcessing(null);
+                  }
                 }}
               >
-                Accept
+                {processing === task.description ? 'Processing...' : 'Accept'}
               </button>
               <button 
                 className="secondary-button"
-                onClick={() => {
-                  console.log('Ignoring task:', task);
-                  onTaskAction(task, 'ignore');
-                }}
+                disabled={processing === task.description}
+                onClick={() => onTaskAction(task, 'ignore')}
               >
                 Ignore
               </button>

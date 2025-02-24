@@ -283,3 +283,85 @@ ipcMain.handle('start-screenpipe', async () => {
     return { success: false, error: (error as Error).message };
   }
 });
+
+// Handle running the Python assistant
+ipcMain.handle('run-assistant', async (event, taskDescription) => {
+  try {
+    const settingsPath = path.join(app.getPath('userData'), 'settings.json')
+    if (!fs.existsSync(settingsPath)) {
+      throw new Error('OpenAI API key not found. Please add your API key in the Settings tab.')
+    }
+
+    const settings = JSON.parse(fs.readFileSync(settingsPath, 'utf8'))
+    const apiKey = settings.apiKey
+
+    if (!apiKey || !apiKey.startsWith('sk-')) {
+      throw new Error('Invalid OpenAI API key format. Please check your API key in the Settings tab.')
+    }
+
+    // Path to the Python script and virtual environment
+    const agentDir = path.join(__dirname, '..', 'agent')
+    const pythonScript = path.join(agentDir, 'assistant.py')
+    const venvPython = path.join(agentDir, '.venv', 'bin', 'python')
+
+    // Verify paths exist
+    if (!fs.existsSync(pythonScript)) {
+      throw new Error('Assistant script not found. Please ensure the agent directory is properly set up.')
+    }
+    if (!fs.existsSync(venvPython)) {
+      throw new Error('Python virtual environment not found. Please run setup instructions from the README.')
+    }
+
+    console.log('Running assistant with task:', taskDescription)
+
+    // Escape the task description for command line
+    const escapedTask = JSON.stringify(taskDescription)
+
+    const pythonProcess = spawn(venvPython, [
+      pythonScript,
+      apiKey,
+      escapedTask
+    ], {
+      env: { ...process.env },
+      cwd: agentDir  // Set working directory to agent folder
+    })
+
+    let output = ''
+    let error = ''
+
+    pythonProcess.stdout.on('data', (data) => {
+      const text = data.toString()
+      output += text
+      console.log('Python output:', text)
+    })
+
+    pythonProcess.stderr.on('data', (data) => {
+      const text = data.toString()
+      error += text
+      console.error('Python error:', text)
+    })
+
+    return new Promise((resolve, reject) => {
+      pythonProcess.on('close', (code) => {
+        if (code === 0) {
+          resolve({ success: true, output })
+        } else {
+          // Check for specific error types
+          if (error.includes('invalid_api_key')) {
+            reject(new Error('Invalid OpenAI API key. Please check your API key in the Settings tab.'))
+          } else if (error.includes('No module named')) {
+            reject(new Error('Missing Python dependencies. Please run: pip install -r requirements.txt in the agent directory.'))
+          } else {
+            reject(new Error(error || 'Assistant failed to run'))
+          }
+        }
+      })
+    })
+  } catch (error) {
+    console.error('Error running assistant:', error);
+    if (error instanceof Error) {
+      return { success: false, error: error.message };
+    }
+    return { success: false, error: 'An unknown error occurred' };
+  }
+})
