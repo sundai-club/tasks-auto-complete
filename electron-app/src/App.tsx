@@ -10,10 +10,12 @@ export function App() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [message, setMessage] = useState<Message | null>(null);
   const [isApiKeyVisible, setIsApiKeyVisible] = useState(false);
+  const [userProfile, setUserProfile] = useState('');
 
   useEffect(() => {
-    // Load API key on mount
+    // Load API key and profile on mount
     loadApiKey();
+    loadUserProfile();
 
     // Set up task listener with cleanup
     const cleanupTaskListener = window.electronAPI.onNewTask((task) => {
@@ -45,6 +47,17 @@ export function App() {
     }
   };
 
+  const loadUserProfile = async () => {
+    try {
+      const result = await window.electronAPI.getProfile();
+      if (result.success) {
+        setUserProfile(result.profile);
+      }
+    } catch (error) {
+      setMessage({ type: 'error', text: 'Failed to load profile' });
+    }
+  };
+
   const handleSaveApiKey = async () => {
     try {
       const result = await window.electronAPI.saveApiKey(apiKey);
@@ -55,6 +68,19 @@ export function App() {
       }
     } catch (error) {
       setMessage({ type: 'error', text: 'Failed to save API key' });
+    }
+  };
+
+  const handleSaveProfile = async () => {
+    try {
+      const result = await window.electronAPI.saveProfile(userProfile);
+      if (result.success) {
+        setMessage({ type: 'success', text: 'Profile saved successfully' });
+      } else {
+        setMessage({ type: 'error', text: result.error || 'Failed to save profile' });
+      }
+    } catch (error) {
+      setMessage({ type: 'error', text: 'Failed to save profile' });
     }
   };
 
@@ -112,11 +138,14 @@ export function App() {
         {currentPage === 'settings' && (
           <Settings
             apiKey={apiKey}
+            userProfile={userProfile}
             isApiKeyVisible={isApiKeyVisible}
             message={message}
             onApiKeyChange={setApiKey}
+            onProfileChange={setUserProfile}
             onToggleApiKeyVisibility={() => setIsApiKeyVisible(!isApiKeyVisible)}
             onSaveApiKey={handleSaveApiKey}
+            onSaveProfile={handleSaveProfile}
           />
         )}
       </div>

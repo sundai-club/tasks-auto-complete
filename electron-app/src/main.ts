@@ -6,6 +6,8 @@ import { spawn, ChildProcess } from 'child_process';
 interface Settings {
   apiKey: string;
   timestamp: string;
+  userProfile: string;
+  profileTimestamp: string;
 }
 
 interface Task {
@@ -85,7 +87,9 @@ ipcMain.handle('save-api-key', async (_event: IpcMainInvokeEvent, key: string) =
     const settingsPath: string = path.join(app.getPath('userData'), 'settings.json');
     const settings: Settings = {
       apiKey: key,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      userProfile: '',
+      profileTimestamp: ''
     };
     fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2));
     console.log('API key saved to:', settingsPath);
@@ -107,6 +111,42 @@ ipcMain.handle('get-api-key', async () => {
     return { success: true, apiKey: settings.apiKey || '' };
   } catch (error) {
     console.error('Error getting API key:', error);
+    return { success: false, error: (error as Error).message };
+  }
+});
+
+// Handle saving profile
+ipcMain.handle('save-profile', async (_event: IpcMainInvokeEvent, profile: string) => {
+  try {
+    const settingsPath: string = path.join(app.getPath('userData'), 'settings.json');
+    let settings = {};
+    if (fs.existsSync(settingsPath)) {
+      settings = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
+    }
+    settings = {
+      ...settings,
+      userProfile: profile,
+      profileTimestamp: new Date().toISOString()
+    };
+    fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2));
+    return { success: true };
+  } catch (error) {
+    console.error('Error saving profile:', error);
+    return { success: false, error: (error as Error).message };
+  }
+});
+
+// Handle getting profile
+ipcMain.handle('get-profile', async () => {
+  try {
+    const settingsPath: string = path.join(app.getPath('userData'), 'settings.json');
+    if (!fs.existsSync(settingsPath)) {
+      return { success: true, profile: '' };
+    }
+    const settings = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
+    return { success: true, profile: settings.userProfile || '' };
+  } catch (error) {
+    console.error('Error getting profile:', error);
     return { success: false, error: (error as Error).message };
   }
 });
