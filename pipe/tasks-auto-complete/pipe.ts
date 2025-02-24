@@ -94,13 +94,7 @@ class WorkflowMonitor {
             }));
 
         const ocrTexts = this.deduplicateEntries(rawOcrTexts, entry => {
-            // Create a key that ignores timestamp
-            return JSON.stringify({
-                text: entry.text,
-                appName: entry.appName,
-                url: entry.url,
-                title: entry.title
-            });
+            return text: entry.text
         });
 
         console.log("\n=== OCR Text Entries ===");
@@ -228,8 +222,10 @@ class WorkflowMonitor {
                     limit: 50,
                     contentType: "ocr"
                 };
-                const ocrData = await pipe.queryScreenpipe(onlyChrome ? { ...baseOCRQuery, appName: "Chrome" } : baseOCRQuery);
-                
+                let ocrData = await pipe.queryScreenpipe(onlyChrome ? { ...baseOCRQuery, appName: "Chrome" } : baseOCRQuery);
+                if (ocrData && Array.isArray(ocrData.data)) {
+                    ocrData.data = this.deduplicateEntries(ocrData.data, (item) => item.content.text);
+                }
                 console.log("Querying UI data...");
                 const baseUIQuery: ScreenpipeQueryParams = {
                     startTime: oneHourAgo.toISOString(),
