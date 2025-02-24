@@ -1,5 +1,5 @@
 import React from 'react';
-import { Task } from '../types';
+import { Task, NotificationActionData } from '../types';
 import ReactMarkdown from 'react-markdown';
 
 interface DashboardProps {
@@ -22,6 +22,16 @@ export const Dashboard: React.FC<DashboardProps> = ({
   onStopAssistant
 }) => {
   const [processing, setProcessing] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    const cleanup = window.electronAPI.onNotificationAction(async (data: NotificationActionData) => {
+      if (data.action === 'accept' || data.action === 'ignore') {
+        await onTaskAction(data.task, data.action);
+      }
+    });
+
+    return () => cleanup && cleanup();
+  }, [onTaskAction]);
 
   return (
     <>

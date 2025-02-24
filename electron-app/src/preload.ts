@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer, IpcRendererEvent } from 'electron';
-import { Task } from './types';
+import { Task, NotificationActionData } from './types';
 
 // Type definitions for our electron API
 type ElectronAPI = {
@@ -10,7 +10,7 @@ type ElectronAPI = {
   stopAssistant: () => Promise<{ success: boolean; error?: string }>;
   runAssistant: (taskDescription: string) => Promise<{ success: boolean; output?: string; error?: string }>;
   onNewTask: (callback: (task: Task) => void) => () => void;
-  onNotificationAction: (callback: (action: 'accept' | 'ignore') => void) => () => void;
+  onNotificationAction: (callback: (data: NotificationActionData) => void) => () => void;
   getProfile: () => Promise<{ success: boolean; profile: string; error?: string }>;
   saveProfile: (profile: string) => Promise<{ success: boolean; error?: string }>;
 };
@@ -33,8 +33,8 @@ contextBridge.exposeInMainWorld(
         ipcRenderer.removeListener('new-task', subscription);
       };
     },
-    onNotificationAction: (callback: (action: 'accept' | 'ignore') => void) => {
-      const subscription = (_event: IpcRendererEvent, action: 'accept' | 'ignore') => callback(action);
+    onNotificationAction: (callback: (data: NotificationActionData) => void) => {
+      const subscription = (_event: IpcRendererEvent, data: NotificationActionData) => callback(data);
       ipcRenderer.on('notification-action', subscription);
       return () => {
         ipcRenderer.removeListener('notification-action', subscription);

@@ -78,9 +78,15 @@ expressApp.post('/new-task', (req, res) => {
     const { description, timestamp } = req.body;
     console.log('Received new task:', { description, timestamp });
 
+    // Create task object
+    const task: Task = { description, timestamp };
+    
+    // Show notification
+    showNotificationWithActions(task);
+
     // Send task to renderer process
     if (mainWindow) {
-      mainWindow.webContents.send('new-task', { description, timestamp });
+      mainWindow.webContents.send('new-task', task);
     }
 
     res.json({ success: true });
@@ -240,21 +246,17 @@ function parseTasksFromOutput(output: string): Task[] {
     };
 
     tasks.push(task);
-    new Notification({
-      title: 'New Task Takeover Request',
-      body: `${task.description}\nReceived at: ${new Date().toLocaleTimeString()}`,
-      urgency: 'critical'
-    }).show();
+    showNotificationWithActions(task);
   }
 
   return tasks;
 }
 
 // Function to show notification with actions
-function showNotificationWithActions(title: string, body: string): void {
+function showNotificationWithActions(task: Task): void {
   const notification = new Notification({
-    title,
-    body,
+    title: 'New Task Available',
+    body: task.description,
     actions: [
       { type: 'button', text: 'Accept' },
       { type: 'button', text: 'Ignore' }
@@ -263,10 +265,40 @@ function showNotificationWithActions(title: string, body: string): void {
   });
 
   // @ts-ignore - 'action' event exists but is not in the types
-  notification.on('action', (_event: Event, index: number) => {
+  notification.on('action', async (_event: Event, index: number) => {
     const action = index === 0 ? 'accept' : 'ignore';
     if (mainWindow) {
-      mainWindow.webContents.send('notification-action', action);
+      if (action === 'accept') {
+        try {
+          // Get user profile and API key
+          const settingsPath = path.join(app.getPath('userData'), 'settings.json');
+          const settings = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
+          const userProfile = settings.userProfile || '';
+
+          // Combine user profile with task description
+          const fullTaskDescription = userProfile
+            ? `User Profile:\n${userProfile}\n\nTask:\n${task.description}`
+            : task.description;
+
+          // Run the assistant
+          mainWindow.webContents.send('assistant-started');
+          const result = await runAssistant(fullTaskDescription);
+          if (result.success) {
+            mainWindow.webContents.send('task-completed', task);
+          } else {
+            throw new Error(result.error || 'Failed to execute task');
+          }
+        } catch (error) {
+          console.error('Error running task from notification:', error);
+          mainWindow.webContents.send('task-error', { 
+            task, 
+            error: error instanceof Error ? error.message : 'Unknown error' 
+          });
+        } finally {
+          mainWindow.webContents.send('assistant-stopped');
+        }
+      }
+      mainWindow.webContents.send('notification-action', { task, action });
     }
   });
 
@@ -415,8 +447,8 @@ ipcMain.handle('stop-assistant', async () => {
   }
 });
 
-// Handle running the Python assistant
-ipcMain.handle('run-assistant', async (event, taskDescription) => {
+// Run assistant with a task
+async function runAssistant(taskDescription: string): Promise<{ success: boolean; output?: string; error?: string }> {
   try {
     const settingsPath = path.join(app.getPath('userData'), 'settings.json')
     if (!fs.existsSync(settingsPath)) {
@@ -483,7 +515,7 @@ ipcMain.handle('run-assistant', async (event, taskDescription) => {
       console.error('Python error:', text)
     })
 
-    return new Promise((resolve, reject) => {
+    return await new Promise((resolve, reject) => {
       assistantProcess!.on('close', (code) => {
         if (code === 0) {
           resolve({ success: true, output })
@@ -506,4 +538,9 @@ ipcMain.handle('run-assistant', async (event, taskDescription) => {
     }
     return { success: false, error: 'An unknown error occurred' };
   }
-})
+}
+
+// Handle running the Python assistant
+ipcMain.handle('run-assistant', async (event, taskDescription) => {
+  return await runAssistant(taskDescription);
+});
