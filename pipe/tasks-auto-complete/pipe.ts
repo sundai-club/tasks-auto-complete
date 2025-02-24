@@ -181,7 +181,7 @@ class WorkflowMonitor {
         console.log("starting computer logs stream to markdown");
 
         const config = {
-            interval: 60, // Check every minute
+            interval: 20, // Check every 20 seconds
         };
         console.log("loaded config:", JSON.stringify(config, null, 2));
 
@@ -274,10 +274,9 @@ class WorkflowMonitor {
                     const logEntry = await this.generateComputerLog(allData);
                     console.log("computer log entry:", logEntry);
                     
-                    // Only update if it's recent
-                    const entryTime = new Date(logEntry.timestamp).getTime();
-                    if (entryTime >= startTime.getTime()) {
-                        logEntries.push(logEntry);
+                    logEntries.push(logEntry);
+
+                    if (logEntries.length % 3 === 0) {
                         await this.checkForWorkflows(logEntries);
                     }
                 } else {
@@ -465,7 +464,9 @@ class WorkflowMonitor {
         1. Analyze the OCR text and UI actions to understand what tasks the user is performing
         2. Look for patterns or repetitive actions that could be automated
         3. Consider the sequence and timing of actions
-        4. Identify any workflows that could be streamlined
+        4. Identify any workflows that could be streamlined with an AI agent to manually perform tasks in a browser.
+
+        Don't offer creating scripts or anything other than providing step by step workflows for the workflow automation performed manually by the agent.
 
         If you find potential automation opportunities:
         1. Describe the pattern you've identified
