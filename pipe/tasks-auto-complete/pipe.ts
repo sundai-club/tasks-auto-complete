@@ -186,11 +186,11 @@ class WorkflowMonitor {
         console.log("loaded config:", JSON.stringify(config, null, 2));
 
         const interval = config.interval * 1000;
-        const lookbackPeriod = 2 * 60 * 1000; // Look back 2 minutes
+        const lookbackPeriod = interval;
 
         await this.sendToInbox(
             "computer log stream started",
-            `monitoring computer work every ${config.interval} seconds, looking back 1 minute`
+            `monitoring computer work every ${config.interval} seconds, looking back ${lookbackPeriod} milliseconds`
         );
 
         let logEntries: ComputerLog[] = [];
