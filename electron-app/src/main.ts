@@ -443,10 +443,18 @@ ipcMain.handle('run-assistant', async (event, taskDescription) => {
       throw new Error('Python virtual environment not found. Please run setup instructions from the README.')
     }
 
-    console.log('Running assistant with task:', taskDescription)
+    // Get user profile from settings
+    const userProfile = settings.userProfile || '';
+
+    // Combine user profile with task description
+    const fullTaskDescription = userProfile
+      ? `User Profile:\n${userProfile}\n\nTask:\n${taskDescription}`
+      : taskDescription;
+
+    console.log('Running assistant with task:', fullTaskDescription)
 
     // Escape the task description for command line
-    const escapedTask = JSON.stringify(taskDescription)
+    const escapedTask = JSON.stringify(fullTaskDescription)
 
     // Kill any existing assistant process
     killAssistantProcess();
