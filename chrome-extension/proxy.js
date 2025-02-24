@@ -44,9 +44,6 @@ app.post('/api/generate', async (req, res) => {
                 body: JSON.stringify({
                     model: req.body.model,
                     messages: [{
-                        role: 'system',
-                        content: 'You are a JSON-only API. You must respond with valid JSON only.'
-                    }, {
                         role: 'user',
                         content: req.body.prompt
                     }],

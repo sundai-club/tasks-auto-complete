@@ -5,6 +5,7 @@ declare global {
       getApiKey: () => Promise<{ success: boolean; apiKey: string; error?: string }>;
       startScreenpipe: () => Promise<{ success: boolean; error?: string }>;
       stopScreenpipe: () => Promise<{ success: boolean; error?: string }>;
+      stopAssistant: () => Promise<{ success: boolean; error?: string }>;
       runAssistant: (taskDescription: string) => Promise<{ success: boolean; output?: string; error?: string }>;
       onNewTask: (callback: (task: Task) => void) => () => void;
       onNotificationAction: (callback: (action: 'accept' | 'ignore') => void) => () => void;

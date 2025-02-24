@@ -7,6 +7,7 @@ type ElectronAPI = {
   getApiKey: () => Promise<{ success: boolean; apiKey: string; error?: string }>;
   startScreenpipe: () => Promise<{ success: boolean; error?: string }>;
   stopScreenpipe: () => Promise<{ success: boolean; error?: string }>;
+  stopAssistant: () => Promise<{ success: boolean; error?: string }>;
   runAssistant: (taskDescription: string) => Promise<{ success: boolean; output?: string; error?: string }>;
   onNewTask: (callback: (task: Task) => void) => () => void;
   onNotificationAction: (callback: (action: 'accept' | 'ignore') => void) => () => void;
@@ -23,6 +24,7 @@ contextBridge.exposeInMainWorld(
     getApiKey: () => ipcRenderer.invoke('get-api-key'),
     startScreenpipe: () => ipcRenderer.invoke('start-screenpipe'),
     stopScreenpipe: () => ipcRenderer.invoke('stop-screenpipe'),
+    stopAssistant: () => ipcRenderer.invoke('stop-assistant'),
     runAssistant: (taskDescription: string) => ipcRenderer.invoke('run-assistant', taskDescription),
     onNewTask: (callback: (task: Task) => void) => {
       const subscription = (_event: IpcRendererEvent, task: Task) => callback(task);

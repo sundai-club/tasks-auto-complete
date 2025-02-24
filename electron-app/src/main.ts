@@ -20,6 +20,30 @@ interface Task {
 
 let mainWindow: BrowserWindow | null = null;
 let screenpipeProcess: ChildProcess | null = null;
+let assistantProcess: ChildProcess | null = null;
+
+// Function to kill the assistant process
+function killAssistantProcess() {
+  if (assistantProcess) {
+    console.log('Killing assistant process...');
+    try {
+      // Send SIGTERM first for graceful shutdown
+      assistantProcess.kill('SIGTERM');
+      
+      // Force kill after 2 seconds if still running
+      setTimeout(() => {
+        if (assistantProcess) {
+          console.log('Force killing assistant process...');
+          assistantProcess.kill('SIGKILL');
+        }
+      }, 2000);
+    } catch (error) {
+      console.error('Error killing assistant process:', error);
+    } finally {
+      assistantProcess = null;
+    }
+  }
+}
 
 // Define recordings directory path
 const recordingsPath: string = path.join(__dirname, '..', 'recordings');
@@ -357,6 +381,18 @@ ipcMain.handle('start-screenpipe', async () => {
   }
 });
 
+// Handle stopping the assistant
+ipcMain.handle('stop-assistant', async () => {
+  try {
+    killAssistantProcess();
+    return { success: true };
+  } catch (error) {
+    console.error('Error stopping assistant:', error);
+    const err = error as Error;
+    return { success: false, error: err.message };
+  }
+});
+
 // Handle running the Python assistant
 ipcMain.handle('run-assistant', async (event, taskDescription) => {
   try {
@@ -390,7 +426,10 @@ ipcMain.handle('run-assistant', async (event, taskDescription) => {
     // Escape the task description for command line
     const escapedTask = JSON.stringify(taskDescription)
 
-    const pythonProcess = spawn(venvPython, [
+    // Kill any existing assistant process
+    killAssistantProcess();
+
+    assistantProcess = spawn(venvPython, [
       pythonScript,
       apiKey,
       escapedTask
@@ -402,20 +441,20 @@ ipcMain.handle('run-assistant', async (event, taskDescription) => {
     let output = ''
     let error = ''
 
-    pythonProcess.stdout.on('data', (data) => {
+    assistantProcess!.stdout?.on('data', (data: Buffer) => {
       const text = data.toString()
       output += text
       console.log('Python output:', text)
     })
 
-    pythonProcess.stderr.on('data', (data) => {
+    assistantProcess!.stderr?.on('data', (data: Buffer) => {
       const text = data.toString()
       error += text
       console.error('Python error:', text)
     })
 
     return new Promise((resolve, reject) => {
-      pythonProcess.on('close', (code) => {
+      assistantProcess!.on('close', (code) => {
         if (code === 0) {
           resolve({ success: true, output })
         } else {

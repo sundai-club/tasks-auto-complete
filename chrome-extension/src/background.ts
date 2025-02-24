@@ -180,7 +180,7 @@ async function generateFormFillingPlan(dom: string) {
         console.log('Creating notification for form filling plan...');
         await showNotification('formPlan', {
             title: 'Form Filling Plan',
-            message: 'Click to view the suggested form filling plan'
+            message: 'Form is ready to be auto-filled'
         });
 
         // Store the plan in extension's storage for later use
@@ -196,7 +196,10 @@ async function generateFormFillingPlan(dom: string) {
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
-                    description: `Fill out form at ${pageUrl} according to this plan:\n${data.response}`,
+                    description: `Fill out form at ${pageUrl} according to this plan:\n${data.response}\n 
+                    For any data not provided for the user think something relevant and come up with creative ways to fill it.
+                    Make sure to fill all required fields.
+                    `,
                     timestamp: new Date().toISOString()
                 })
             });
