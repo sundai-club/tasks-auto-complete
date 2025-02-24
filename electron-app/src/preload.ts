@@ -11,6 +11,8 @@ type ElectronAPI = {
   runAssistant: (taskDescription: string) => Promise<{ success: boolean; output?: string; error?: string }>;
   onNewTask: (callback: (task: Task) => void) => () => void;
   onNotificationAction: (callback: (data: NotificationActionData) => void) => () => void;
+  onTaskProcessing: (callback: (task: Task) => void) => () => void;
+  onTaskProcessingDone: (callback: (task: Task) => void) => () => void;
   getProfile: () => Promise<{ success: boolean; profile: string; error?: string }>;
   saveProfile: (profile: string) => Promise<{ success: boolean; error?: string }>;
 };
@@ -42,5 +44,19 @@ contextBridge.exposeInMainWorld(
     },
     getProfile: () => ipcRenderer.invoke('get-profile'),
     saveProfile: (profile: string) => ipcRenderer.invoke('save-profile', profile),
+    onTaskProcessing: (callback: (task: Task) => void) => {
+      const subscription = (_event: IpcRendererEvent, task: Task) => callback(task);
+      ipcRenderer.on('task-processing', subscription);
+      return () => {
+        ipcRenderer.removeListener('task-processing', subscription);
+      };
+    },
+    onTaskProcessingDone: (callback: (task: Task) => void) => {
+      const subscription = (_event: IpcRendererEvent, task: Task) => callback(task);
+      ipcRenderer.on('task-processing-done', subscription);
+      return () => {
+        ipcRenderer.removeListener('task-processing-done', subscription);
+      };
+    },
   } as ElectronAPI
 );

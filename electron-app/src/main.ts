@@ -280,8 +280,11 @@ function showNotificationWithActions(task: Task): void {
             ? `User Profile:\n${userProfile}\n\nTask:\n${task.description}`
             : task.description;
 
-          // Run the assistant
+          // Update UI state
+          mainWindow.webContents.send('task-processing', task);
           mainWindow.webContents.send('assistant-started');
+
+          // Run the assistant
           const result = await runAssistant(fullTaskDescription);
           if (result.success) {
             mainWindow.webContents.send('task-completed', task);
@@ -296,6 +299,7 @@ function showNotificationWithActions(task: Task): void {
           });
         } finally {
           mainWindow.webContents.send('assistant-stopped');
+          mainWindow.webContents.send('task-processing-done', task);
         }
       }
       mainWindow.webContents.send('notification-action', { task, action });

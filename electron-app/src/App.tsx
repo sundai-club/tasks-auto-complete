@@ -29,10 +29,24 @@ export function App() {
       console.log('Notification action received:', action);
     });
 
+    // Set up task processing listeners
+    const cleanupProcessingListener = window.electronAPI.onTaskProcessing((task: Task) => {
+      setProcessingTask(task.description);
+      setIsAssistantActive(true);
+    });
+
+    const cleanupProcessingDoneListener = window.electronAPI.onTaskProcessingDone((task: Task) => {
+      setProcessingTask(null);
+      setIsAssistantActive(false);
+      setTasks(prev => prev.filter(t => t.description !== task.description));
+    });
+
     // Cleanup function
     return () => {
       cleanupTaskListener && cleanupTaskListener();
       cleanupNotificationListener && cleanupNotificationListener();
+      cleanupProcessingListener && cleanupProcessingListener();
+      cleanupProcessingDoneListener && cleanupProcessingDoneListener();
     };
   }, []);
 

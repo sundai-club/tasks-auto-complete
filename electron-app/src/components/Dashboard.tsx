@@ -23,10 +23,21 @@ export const Dashboard: React.FC<DashboardProps> = ({
 }) => {
   const [processing, setProcessing] = React.useState<string | null>(null);
 
+  const startProcessing = async (task: Task) => {
+    try {
+      setProcessing(task.description);
+      await onTaskAction(task, 'accept');
+    } catch (error) {
+      console.error('Error processing task:', error);
+    } finally {
+      setProcessing(null);
+    }
+  };
+
   React.useEffect(() => {
     const cleanup = window.electronAPI.onNotificationAction(async (data: NotificationActionData) => {
       if (data.action === 'accept' || data.action === 'ignore') {
-        await onTaskAction(data.task, data.action);
+        await startProcessing(data.task);
       }
     });
 
@@ -73,40 +84,38 @@ export const Dashboard: React.FC<DashboardProps> = ({
               {processing === task.description ? (
                 <div className="processing-container">
                   <div className="processing">Processing...</div>
-                  {isAssistantActive && (
-                    <button
-                      className="danger-button"
-                      onClick={onStopAssistant}
-                    >
-                      Stop
-                    </button>
-                  )}
+                  <button
+                    className="danger-button"
+                    onClick={onStopAssistant}
+                  >
+                    Stop
+                  </button>
+                </div>
+              ) : isAssistantActive ? (
+                <div className="task-actions-disabled">
+                  <button className="primary-button" disabled>
+                    Accept
+                  </button>
+                  <button className="secondary-button" disabled>
+                    Ignore
+                  </button>
                 </div>
               ) : (
                 <>
                   <button 
                     className="primary-button"
                     onClick={async () => {
-                      try {
-                        setProcessing(task.description);
-                        await onTaskAction(task, 'accept');
-                      } catch (error) {
-                        console.error('Error processing task:', error);
-                      } finally {
-                        setProcessing(null);
-                      }
+                      startProcessing(task);
                     }}
                   >
                     Accept
                   </button>
-                  {!isAssistantActive && (
-                    <button 
-                      className="secondary-button"
-                      onClick={() => onTaskAction(task, 'ignore')}
-                    >
-                      Ignore
-                    </button>
-                  )}
+                  <button 
+                    className="secondary-button"
+                    onClick={() => onTaskAction(task, 'ignore')}
+                  >
+                    Ignore
+                  </button>
                 </>
               )}
             </div>

@@ -11,6 +11,8 @@ declare global {
       onNotificationAction: (callback: (data: NotificationActionData) => void) => () => void;
       getProfile: () => Promise<{ success: boolean; profile: string; error?: string }>;
       saveProfile: (profile: string) => Promise<{ success: boolean; error?: string }>;
+      onTaskProcessing: (callback: (task: Task) => void) => () => void;
+      onTaskProcessingDone: (callback: (task: Task) => void) => () => void;
     };
   }
 }
