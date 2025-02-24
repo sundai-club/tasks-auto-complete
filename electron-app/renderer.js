@@ -174,6 +174,30 @@ initializeTaskButtons()
 // Store tasks in memory
 let tasks = [];
 
+// Configure marked options globally
+marked.setOptions({
+  breaks: true,  // Enable line breaks
+  gfm: true,     // Enable GitHub Flavored Markdown
+  headerIds: false,
+  mangle: false,
+  smartLists: true,
+  smartypants: true
+});
+
+// Function to safely render markdown
+function renderMarkdown(text) {
+  try {
+    if (!text) return '';
+    // Ensure text is a string
+    const markdownText = String(text);
+    // Render the markdown
+    return marked.parse(markdownText);
+  } catch (error) {
+    console.error('Error rendering markdown:', error);
+    return text || '';
+  }
+}
+
 // Listen for new tasks from screenpipe
 window.electronAPI.onNewTask((task) => {
   console.log('Received new task:', task);
@@ -190,11 +214,14 @@ window.electronAPI.onNewTask((task) => {
     const timestamp = new Date(task.timestamp);
     const formattedTime = timestamp.toLocaleTimeString();
 
+    // Render markdown for task description
+    const renderedDescription = renderMarkdown(task.description);
+
     taskBubble.innerHTML = `
       <h3>Task Takeover Request</h3>
       <div class="task-content">
         <div class="task-icon">🧑‍💻</div>
-        <p class="task-description">${task.description}</p>
+        <div class="task-description markdown-content">${renderedDescription}</div>
         <p class="task-timestamp">Received at: ${formattedTime}</p>
       </div>
       <div class="task-actions">
@@ -218,11 +245,14 @@ window.electronAPI.onNewTask((task) => {
 
         const result = await window.electronAPI.runAssistant(task.description);
         if (result.success) {
+          // Render markdown for result output
+          const renderedOutput = renderMarkdown(result.output || 'Task completed successfully!');
+          
           taskBubble.innerHTML = `
             <h3>Task Complete</h3>
             <div class="task-content">
               <div class="task-icon">✅</div>
-              <p class="task-description">${result.output || 'Task completed successfully!'}</p>
+              <div class="task-description markdown-content">${renderedOutput}</div>
             </div>
           `;
         } else {
@@ -234,7 +264,7 @@ window.electronAPI.onNewTask((task) => {
           <h3>Task Failed</h3>
           <div class="task-content">
             <div class="task-icon">❌</div>
-            <p class="task-description">Error: ${error.message}</p>
+            <div class="task-description">${error.message}</div>
           </div>
         `;
       }

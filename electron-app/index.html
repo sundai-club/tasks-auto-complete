@@ -3,10 +3,15 @@
 
 <head>
     <meta charset="UTF-8">
-    <!-- https://developer.mozilla.org/en-US/docs/Web/HTTP/CSP -->
+    <!-- Update CSP to allow React -->
     <meta http-equiv="Content-Security-Policy"
-        content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'">
+        content="default-src 'self' https://cdn.jsdelivr.net; 
+                script-src 'self' https://cdn.jsdelivr.net 'unsafe-inline' 'unsafe-eval'; 
+                style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; 
+                font-src 'self' https://fonts.gstatic.com">
     <link href="./styles.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <title>AutoTask</title>
 </head>
 
@@ -15,6 +20,7 @@
         <div class="logo">AutoTask</div>
         <button class="nav-button active" data-page="recording">Recording</button>
         <button class="nav-button" data-page="settings">Settings</button>
+        <button class="nav-button" data-page="analyze">Analyze</button>
     </div>
 
     <div class="main-content">
@@ -51,10 +57,14 @@
                 <p id="settingsMessage" class="message"></p>
             </div>
         </div>
+
+        <div class="page" id="analyze-page">
+            <div id="analyze-root"></div>
+        </div>
     </div>
 
     <!-- You can also require other files to run in this process -->
-    <script src="./renderer.js"></script>
+    <script src="./dist/renderer.bundle.js"></script>
 </body>
 
 </html>

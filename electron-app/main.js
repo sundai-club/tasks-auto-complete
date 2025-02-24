@@ -3,6 +3,8 @@ const { app, BrowserWindow, ipcMain, Notification } = require('electron')
 const path = require('path')
 const fs = require('fs')
 const { spawn } = require('child_process')
+const sqlite3 = require('sqlite3')
+const { open } = require('sqlite')
 
 let mainWindow
 let screenpipeProcess = null
@@ -24,9 +26,11 @@ function createWindow() {
     width: 1200,
     height: 800,
     webPreferences: {
-      nodeIntegration: false,
-      contextIsolation: true,
-      preload: path.join(__dirname, 'preload.js')
+      nodeIntegration: true,
+      contextIsolation: false,
+      // Add these security-related settings
+      webSecurity: true,
+      allowRunningInsecureContent: false
     }
   })
 
@@ -44,6 +48,23 @@ function createWindow() {
 
   // Open the DevTools.
   mainWindow.webContents.openDevTools()
+
+  // Add CSP header
+  mainWindow.webContents.session.webRequest.onHeadersReceived((details, callback) => {
+    callback({
+      responseHeaders: {
+        ...details.responseHeaders,
+        'Content-Security-Policy': [
+          "default-src 'self'; " +
+          "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net; " +
+          "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com; " +
+          "font-src 'self' https://fonts.gstatic.com; " +
+          "img-src 'self' data: https:; " +
+          "connect-src 'self' https:;"
+        ]
+      }
+    });
+  });
 }
 
 // This method will be called when Electron has finished
@@ -119,7 +140,7 @@ ipcMain.handle('run-assistant', async (event, taskDescription) => {
     // Path to the Python script and virtual environment
     const agentDir = path.join(__dirname, '..', 'agent')
     const pythonScript = path.join(agentDir, 'assistant.py')
-    const venvPython = path.join(agentDir, '.venv', 'bin', 'python')
+    const venvPython = path.join(agentDir, 'venv', 'bin', 'python')
 
     // Verify paths exist
     if (!fs.existsSync(pythonScript)) {
@@ -364,3 +385,47 @@ ipcMain.handle('start-screenpipe', async () => {
     return { success: false, error: error.message }
   }
 })
+
+// Add this with the other IPC handlers
+ipcMain.handle('query-screenpipe', async (event, criteria) => {
+  try {
+    const dbPath = path.join(process.env.HOME, '.screenpipe', 'db.sqlite');
+    
+    const db = await open({
+      filename: dbPath,
+      driver: sqlite3.Database
+    });
+
+    // Updated query to get more fields and limit to 100 entries
+    let query = `
+      SELECT 
+        text,
+        app_name,
+        window_name,
+        focused
+      FROM ocr_text 
+      WHERE app_name='Arc'
+    `;
+    const params = [];
+
+    if (criteria.keyword) {
+      query += ` AND text LIKE ?`;
+      params.push(`%${criteria.keyword}%`);
+    }
+
+    query += ` LIMIT 100`;
+
+    try {
+      const results = await db.all(query, params);
+      await db.close();
+      return { success: true, data: results };
+    } catch (error) {
+      console.error('Database query error:', error);
+      await db.close();
+      throw error;
+    }
+  } catch (error) {
+    console.error('Error in query-screenpipe handler:', error);
+    return { success: false, error: error.message };
+  }
+});
