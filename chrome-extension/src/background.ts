@@ -9,6 +9,53 @@ Location: Somerville, MA
 
 console.log('Background script loaded!');
 
+// Request notification permission on startup
+async function requestNotificationPermission() {
+    return new Promise<void>((resolve) => {
+        chrome.notifications.getPermissionLevel((permission) => {
+            console.log('Current notification permission:', permission);
+            
+            if (permission !== 'granted') {
+                // Create a test notification to trigger the permission request
+                chrome.notifications.create('test', {
+                    type: 'basic',
+                    iconUrl: chrome.runtime.getURL('dist/icons/icon48.png'),
+                    title: 'Form Analysis Assistant',
+                    message: 'Notification permissions test'
+                }, () => {
+                    console.log('Notification permission requested');
+                });
+            }
+            resolve();
+        });
+    });
+}
+
+// Function to show notification
+async function showNotification(id: string, options: Partial<chrome.notifications.NotificationOptions>) {
+    const baseOptions = {
+        type: 'basic' as chrome.notifications.TemplateType,
+        iconUrl: chrome.runtime.getURL('dist/icons/icon48.png'),
+        title: options.title || 'Form Analysis Assistant',
+        message: options.message || '',
+        requireInteraction: true,
+        silent: false
+    };
+    try {
+        await new Promise<void>((resolve) => {
+            chrome.notifications.create(id, baseOptions, () => resolve());
+        });
+        console.log('Notification created:', id);
+    } catch (error) {
+        console.error('Error showing notification:', error);
+        // Fallback to alert if notifications fail
+        alert(options.message);
+    }
+}
+
+// Request permission when extension loads
+requestNotificationPermission();
+
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     console.log('Received message:', message);
     if (message.type === 'ANALYZE_PAGE') {
@@ -82,9 +129,7 @@ async function analyzePageContent(dom: string) {
             if (hasEmptyForms) {
                 // Show desktop notification
                 console.log('Creating notification for form detection...');
-                chrome.notifications.create('formDetected', {
-                    type: 'basic',
-                    iconUrl: chrome.runtime.getURL('dist/icons/icon48.png'),
+                await showNotification('formDetected', {
                     title: 'Form Detected',
                     message: 'Empty form found on the page. Generating filling suggestions...'
                 });
@@ -110,7 +155,7 @@ async function generateFormFillingPlan(dom: string) {
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-                model: 'deepseek-r1:1.5b',
+                model: 'gpt-4o-mini',
                 prompt: `Given this HTML form and user profile, create a step-by-step plan for filling out the form. 
                 Consider the context and purpose of the form. Format the response as a numbered list of steps.
 
@@ -127,17 +172,13 @@ async function generateFormFillingPlan(dom: string) {
         
         // Show the plan in a new notification
         console.log('Creating notification for form filling plan...');
-        chrome.notifications.create('formPlan', {
-            type: 'basic',
-            iconUrl: 'icons/icon48.png',
+        await showNotification('formPlan', {
             title: 'Form Filling Plan',
-            message: 'Click to view the suggested form filling plan',
-            priority: 2
+            message: 'Click to view the suggested form filling plan'
         });
 
         // Store the plan in extension's storage for later use
-                    const parsedPlan = JSON.parse(data.response?.trim() || '{}');
-            chrome.storage.local.set({ formFillingPlan: parsedPlan.plan });
+        chrome.storage.local.set({ formFillingPlan: data.response });
     } catch (error) {
         console.error('Error generating form filling plan:', error);
     }
