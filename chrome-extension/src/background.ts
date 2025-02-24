@@ -21,15 +21,23 @@ async function analyzePageContent(dom: string) {
     try {
         console.log('Sending page for analysis...');
         const requestBody = {
-            model: 'llama3.2',  // Use the correct model name
-            prompt: `Analyze this HTML and determine if it contains any empty forms (forms without filled input fields). 
-            Only respond with "true" if there are empty forms, or "false" if there are no empty forms or no forms at all:\n\n${dom}
-
-            Only respond with "true" if there are empty forms, or "false" if there are no empty forms or no forms at all.
-            Only respond with "true" if there are empty forms, or "false" if there are no empty forms or no forms at all.
-            You response format is one word only: true or false.
+            model: 'llama3.2',
+            prompt: `You are a JSON-only API. Your task is to analyze HTML and determine if it contains any empty forms.
+            
+            Rules:
+            1. You MUST respond in valid JSON format only
+            2. No explanations or other text outside the JSON
+            3. Use the exact response format shown below
+            
+            HTML to analyze:
+            {html}
+            ${dom}
+            {/html}
+            
+            Response format:
+            {"hasEmptyForms": boolean}
             `,
-            stream: false
+            stream: false            
         };
 
         console.log('Request body:', requestBody);
@@ -67,7 +75,8 @@ async function analyzePageContent(dom: string) {
             const data = JSON.parse(result);
             console.log('Parsed data:', data);
 
-            const hasEmptyForms = data.response?.trim().toLowerCase() === 'true';
+            const parsedResponse = JSON.parse(data.response?.trim() || '{}');
+            const hasEmptyForms = parsedResponse.hasEmptyForms === true;
             console.log('Has empty forms:', hasEmptyForms);
 
             if (hasEmptyForms) {
@@ -101,14 +110,16 @@ async function generateFormFillingPlan(dom: string) {
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-                model: 'llama3.2',
-                prompt: `Given this HTML form and user profile, create a step-by-step plan for filling out the form. Consider the context and purpose of the form. Format the response as a numbered list of steps.
+                model: 'deepseek-r1:1.5b',
+                prompt: `Given this HTML form and user profile, create a step-by-step plan for filling out the form. 
+                Consider the context and purpose of the form. Format the response as a numbered list of steps.
 
-User Profile:
-${userProfile}
+                User Profile:
+                ${userProfile}
 
-HTML:
-${dom}`
+                HTML:
+                ${dom}
+                `
             })
         });
 
@@ -125,7 +136,8 @@ ${dom}`
         });
 
         // Store the plan in extension's storage for later use
-        chrome.storage.local.set({ formFillingPlan: data.response });
+                    const parsedPlan = JSON.parse(data.response?.trim() || '{}');
+            chrome.storage.local.set({ formFillingPlan: parsedPlan.plan });
     } catch (error) {
         console.error('Error generating form filling plan:', error);
     }
