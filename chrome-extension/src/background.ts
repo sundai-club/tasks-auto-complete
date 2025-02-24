@@ -186,32 +186,30 @@ async function generateFormFillingPlan(dom: string) {
         // Store the plan in extension's storage for later use
         chrome.storage.local.set({ formFillingPlan: data.response });
 
-        // Execute the Python assistant with the task
+        console.log('Sending task to Electron app...');
+
+        // Send task to Electron app
         try {
-            const response = await fetch('http://localhost:11435/run-assistant', {
+            const taskResponse = await fetch('http://localhost:3000/new-task', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
-                    taskDescription: `Fill out form at ${pageUrl} according to this plan:\n${data.response}`
+                    description: `Fill out form at ${pageUrl} according to this plan:\n${data.response}`,
+                    timestamp: new Date().toISOString()
                 })
             });
 
-            if (!response.ok) {
-                throw new Error(`Assistant API error: ${response.status}`);
+            console.log('Task response:', taskResponse);
+
+            if (!taskResponse.ok) {
+                throw new Error(`Failed to send task to Electron app: ${taskResponse.status}`);
             }
 
-            const result = await response.json();
-            console.log('Assistant execution result:', result);
-
-            // Show success notification
-            await showNotification('assistantComplete', {
-                title: 'Form Assistant Ready',
-                message: 'The assistant is ready to help fill out the form'
-            });
+            console.log('Task sent to Electron app');
         } catch (error) {
-            console.error('Error executing assistant:', error);
+            console.error('Error executing assistant or sending task:', error);
             await showNotification('assistantError', {
                 title: 'Assistant Error',
                 message: 'Failed to start the form filling assistant'

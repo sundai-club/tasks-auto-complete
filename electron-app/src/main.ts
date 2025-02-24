@@ -1,7 +1,10 @@
 import { app, BrowserWindow, ipcMain, Notification, IpcMainInvokeEvent, WebContents } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
+import * as http from 'http';
 import { spawn, ChildProcess } from 'child_process';
+import express from 'express';
+import cors from 'cors';
 
 interface Settings {
   apiKey: string;
@@ -20,6 +23,36 @@ let screenpipeProcess: ChildProcess | null = null;
 
 // Define recordings directory path
 const recordingsPath: string = path.join(__dirname, '..', 'recordings');
+
+// Create Express app for receiving tasks from Chrome extension
+const expressApp = express();
+expressApp.use(cors());
+expressApp.use(express.json());
+
+// Handle new tasks from Chrome extension
+expressApp.post('/new-task', (req, res) => {
+  try {
+    const { description, timestamp } = req.body;
+    console.log('Received new task:', { description, timestamp });
+
+    // Send task to renderer process
+    if (mainWindow) {
+      mainWindow.webContents.send('new-task', { description, timestamp });
+    }
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error handling new task:', error);
+    const err = error as Error;
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Start HTTP server
+const server = http.createServer(expressApp);
+server.listen(3000, () => {
+  console.log('Task server listening on port 3000');
+});
 
 // Add support for secure restorable state on macOS
 if (process.platform === 'darwin') {
