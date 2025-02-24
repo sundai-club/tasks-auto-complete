@@ -187,10 +187,18 @@ export const Dashboard: React.FC<DashboardProps> = ({
                   </button>
                 </>
               ) : (
-                <>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button 
+                    className="primary-button"
+                    onClick={() => startProcessing(task)}
+                  >
+                    Accept
+                  </button>
+                  {/* Edit button with a different shade of blue */}
                   <button 
                     className="primary-button"
                     onClick={() => handleEdit(task)}
+                    style={{ backgroundColor: '#4a90e2' }}
                   >
                     Edit
                   </button>
@@ -200,7 +208,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                   >
                     Ignore
                   </button>
-                </>
+                </div>
               )}
             </div>
           </div>
