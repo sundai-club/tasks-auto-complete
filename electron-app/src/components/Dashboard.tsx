@@ -51,12 +51,11 @@ export const Dashboard: React.FC<DashboardProps> = ({
                   {new Date(task.timestamp).toLocaleString()}
                 </p>
                 <div className="task-description" style={{
-                  whiteSpace: 'pre-wrap',
                   wordBreak: 'break-word',
                   maxWidth: '100%',
                   overflow: 'hidden'
                 }}>
-                  <ReactMarkdown>{task.description}</ReactMarkdown>
+                  <ReactMarkdown>{task.description.trim()}</ReactMarkdown>
                 </div>
               </div>
             </div>
