@@ -40,3 +40,27 @@ npm install
 # Run the app
 npm start
 ```
+
+## Chrome extension
+
+1. Build the extension:
+```bash
+cd chrome-extension
+npm install
+npm run build
+```
+2. Install the extension:
+- Open Google Chrome
+- Go to `chrome://extensions`
+- Click on "Load unpacked"
+- Select the `chrome-extension` folder
+3. Run the proxy server:
+```bash
+cd chrome-extension
+OPENAI_API_KEY=your_openai_api_key node proxy.js
+```
+4. Reload the extension:
+- Open Google Chrome
+- Go to `chrome://extensions`
+- Click on the extension
+- Click on "Reload"
