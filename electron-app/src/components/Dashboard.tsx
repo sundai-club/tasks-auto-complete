@@ -1,5 +1,6 @@
 import React from 'react';
 import { Task } from '../types';
+import ReactMarkdown from 'react-markdown';
 
 interface DashboardProps {
   isRecording: boolean;
@@ -49,7 +50,9 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 <p className="task-timestamp">
                   {new Date(task.timestamp).toLocaleString()}
                 </p>
-                <p className="task-description">{task.description}</p>
+                <div className="task-description">
+                  <ReactMarkdown>{task.description}</ReactMarkdown>
+                </div>
               </div>
             </div>
             <div className="task-actions">

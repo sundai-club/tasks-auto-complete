@@ -167,6 +167,8 @@ input:focus {
   align-items: flex-start;
   gap: 16px;
   margin: 20px 0;
+  width: 100%;
+  min-width: 0;
 }
 
 .task-icon {
@@ -185,6 +187,52 @@ input:focus {
   color: var(--text-color);
   flex: 1;
   padding: 8px 0;
+  max-width: 100%;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+.task-description p {
+  margin: 0.5em 0;
+}
+
+.task-description h1, 
+.task-description h2, 
+.task-description h3, 
+.task-description h4, 
+.task-description h5, 
+.task-description h6 {
+  margin: 0.5em 0;
+  line-height: 1.2;
+}
+
+.task-description code {
+  background-color: #f1f1f1;
+  padding: 2px 4px;
+  border-radius: 4px;
+  font-family: monospace;
+}
+
+.task-description pre {
+  background-color: #f1f1f1;
+  padding: 1em;
+  border-radius: 4px;
+  overflow-x: auto;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+.task-description ul, 
+.task-description ol {
+  margin: 0.5em 0;
+  padding-left: 1.5em;
+}
+
+.task-description blockquote {
+  margin: 0.5em 0;
+  padding-left: 1em;
+  border-left: 3px solid #e5e7eb;
+  color: #6b7280;
 }
 
 .task-actions {

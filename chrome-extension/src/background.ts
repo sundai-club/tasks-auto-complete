@@ -1,12 +1,3 @@
-// Sample user profile - in production, this should be configurable
-const userProfile = `
-Name: Alexander Ivkin
-Email: mit@ivkin.dev
-Age: 39
-Occupation: Software Engineer
-Location: Somerville, MA
-`;
-
 console.log('Background script loaded!');
 
 // Request notification permission on startup
@@ -38,12 +29,20 @@ async function showNotification(id: string, options: Partial<chrome.notification
         iconUrl: chrome.runtime.getURL('dist/icons/icon48.png'),
         title: options.title || 'Form Analysis Assistant',
         message: options.message || '',
-        requireInteraction: true,
+        requireInteraction: false, // Allow auto-dismissal
         silent: false
     };
     try {
         await new Promise<void>((resolve) => {
-            chrome.notifications.create(id, baseOptions, () => resolve());
+            chrome.notifications.create(id, baseOptions, () => {
+                // Auto-dismiss after 5 seconds
+                setTimeout(() => {
+                    chrome.notifications.clear(id, () => {
+                        console.log('Notification cleared:', id);
+                    });
+                }, 5000);
+                resolve();
+            });
         });
         console.log('Notification created:', id);
     } catch (error) {
@@ -170,9 +169,6 @@ async function generateFormFillingPlan(dom: string) {
                 Make sure to include any relevant context from the page URL.
 
                 Page URL: ${pageUrl}
-
-                User Profile:
-                ${userProfile}
 
                 HTML:
                 ${dom}
