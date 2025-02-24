@@ -24,6 +24,19 @@ export const Dashboard: React.FC<DashboardProps> = ({
   const [processingTaskId, setProcessingTaskId] = React.useState<string | null>(null);
   const [editingTaskId, setEditingTaskId] = React.useState<string | null>(null);
   const [editedDescription, setEditedDescription] = React.useState<string>('');
+  const [textareaDimensions, setTextareaDimensions] = React.useState<{ width: number; height: number }>({ width: 0, height: 0 });
+  const previewRef = React.useRef<HTMLDivElement>(null);
+
+  // Update textarea dimensions when switching to edit mode
+  React.useEffect(() => {
+    if (editingTaskId && previewRef.current) {
+      const { offsetWidth, offsetHeight } = previewRef.current;
+      setTextareaDimensions({
+        width: offsetWidth,
+        height: Math.max(offsetHeight, 100) // Minimum height of 100px
+      });
+    }
+  }, [editingTaskId]);
 
   const startProcessing = async (task: Task) => {
     try {
@@ -40,8 +53,20 @@ export const Dashboard: React.FC<DashboardProps> = ({
   };
 
   const handleEdit = (task: Task) => {
-    setEditingTaskId(task.id);
+    // Set the description first
     setEditedDescription(task.description);
+    
+    // Get the dimensions of the preview before switching to edit mode
+    if (previewRef.current) {
+      const { offsetWidth, offsetHeight } = previewRef.current;
+      setTextareaDimensions({
+        width: offsetWidth,
+        height: Math.max(offsetHeight, 100) // Minimum height of 100px
+      });
+    }
+    
+    // Then switch to edit mode
+    setEditingTaskId(task.id);
   };
 
   const handleCancelEdit = () => {
@@ -86,25 +111,40 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 <p className="task-timestamp">
                   {new Date(task.timestamp).toLocaleString()}
                 </p>
-                <div className="task-description" style={{
-                  wordBreak: 'break-word',
-                  maxWidth: '100%',
-                  overflow: 'hidden'
-                }}>
+                <div 
+                  className="task-description" 
+                  style={{
+                    wordBreak: 'break-word',
+                    maxWidth: '100%',
+                    overflow: 'hidden',
+                    position: 'relative',
+                    padding: '16px'
+                  }}
+                >
                   {editingTaskId === task.id ? (
                     <textarea
                       value={editedDescription}
                       onChange={(e) => setEditedDescription(e.target.value)}
                       style={{
-                        width: '100%',
-                        minHeight: '100px',
-                        padding: '8px',
-                        marginBottom: '8px',
-                        resize: 'vertical'
+                        width: `${textareaDimensions.width}px`,
+                        height: `${textareaDimensions.height}px`,
+                        padding: '0',
+                        margin: '0',
+                        resize: 'none',
+                        border: '1px solid #ccc',
+                        borderRadius: '4px',
+                        fontFamily: 'inherit',
+                        fontSize: 'inherit',
+                        lineHeight: 'inherit',
+                        backgroundColor: '#f8f9fa',
+                        whiteSpace: 'pre-wrap',
+                        boxSizing: 'border-box'
                       }}
                     />
                   ) : (
-                    <ReactMarkdown>{task.description.trim()}</ReactMarkdown>
+                    <div ref={previewRef} style={{ margin: '0' }}>
+                      <ReactMarkdown>{task.description.trim()}</ReactMarkdown>
+                    </div>
                   )}
                 </div>
               </div>
