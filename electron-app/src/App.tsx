@@ -67,6 +67,7 @@ export function App() {
         } else {
           setMessage({ type: 'error', text: result.error || 'Failed to start recording' });
         }
+        // const result = await window.electronAPI.runAssistant(`Automate the form filling process on Airtable. \n\nStep 1: Open the Airtable link provided.\n\nStep 2: Parse the form fields to identify the required information. These fields may include 'Name', 'Email', etc.\n\nStep 3: Fill in the user's details into the respective fields: \n- For the 'Name' field, enter 'Alexander Ivkin'.\n- For the 'Email' field, enter 'mit@ivkin.dev'.\n\nStep 4: For fields that are not mentioned in the user's profile, use intelligent prediction to fill them. For example, if there's a 'Company' field, you might enter a relevant company based on the user's email domain. If there's a 'Role' field, you might enter 'Developer' or 'Engineer' based on the user's email address. If there's a 'Date' field, use the current date.\n\nStep 5: After all fields are filled, submit the form.\n\nStep 6: Confirm the successful submission and notify the user.`);
       } else {
         const result = await window.electronAPI.stopScreenpipe();
         if (result.success) {

@@ -300,13 +300,13 @@ ipcMain.handle('run-assistant', async (event, taskDescription) => {
     }
 
     // Path to the Python script and virtual environment
-    const agentDir = path.join(__dirname, '..', 'agent')
+    const agentDir = path.join(__dirname, '../..', 'agent')
     const pythonScript = path.join(agentDir, 'assistant.py')
     const venvPython = path.join(agentDir, '.venv', 'bin', 'python')
 
     // Verify paths exist
     if (!fs.existsSync(pythonScript)) {
-      throw new Error('Assistant script not found. Please ensure the agent directory is properly set up.')
+      throw new Error(`Assistant script not found. Please ensure the agent directory is properly set up. Path: ${pythonScript}`)
     }
     if (!fs.existsSync(venvPython)) {
       throw new Error('Python virtual environment not found. Please run setup instructions from the README.')
