@@ -193,6 +193,17 @@ input:focus {
   margin-top: 16px;
 }
 
+.processing-container {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.processing {
+  color: #666;
+  font-style: italic;
+}
+
 .secondary-button {
   background-color: #e5e7eb;
   color: var(--text-color);

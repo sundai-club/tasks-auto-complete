@@ -1,7 +1,10 @@
 import { app, BrowserWindow, ipcMain, Notification, IpcMainInvokeEvent, WebContents } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
+import * as http from 'http';
 import { spawn, ChildProcess } from 'child_process';
+import express from 'express';
+import cors from 'cors';
 
 interface Settings {
   apiKey: string;
@@ -17,9 +20,63 @@ interface Task {
 
 let mainWindow: BrowserWindow | null = null;
 let screenpipeProcess: ChildProcess | null = null;
+let assistantProcess: ChildProcess | null = null;
+
+// Function to kill the assistant process
+function killAssistantProcess() {
+  if (assistantProcess) {
+    console.log('Killing assistant process...');
+    try {
+      // Send SIGTERM first for graceful shutdown
+      assistantProcess.kill('SIGTERM');
+      
+      // Force kill after 2 seconds if still running
+      setTimeout(() => {
+        if (assistantProcess) {
+          console.log('Force killing assistant process...');
+          assistantProcess.kill('SIGKILL');
+        }
+      }, 2000);
+    } catch (error) {
+      console.error('Error killing assistant process:', error);
+    } finally {
+      assistantProcess = null;
+    }
+  }
+}
 
 // Define recordings directory path
 const recordingsPath: string = path.join(__dirname, '..', 'recordings');
+
+// Create Express app for receiving tasks from Chrome extension
+const expressApp = express();
+expressApp.use(cors());
+expressApp.use(express.json());
+
+// Handle new tasks from Chrome extension
+expressApp.post('/new-task', (req, res) => {
+  try {
+    const { description, timestamp } = req.body;
+    console.log('Received new task:', { description, timestamp });
+
+    // Send task to renderer process
+    if (mainWindow) {
+      mainWindow.webContents.send('new-task', { description, timestamp });
+    }
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error handling new task:', error);
+    const err = error as Error;
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Start HTTP server
+const server = http.createServer(expressApp);
+server.listen(3000, () => {
+  console.log('Task server listening on port 3000');
+});
 
 // Add support for secure restorable state on macOS
 if (process.platform === 'darwin') {
@@ -324,6 +381,18 @@ ipcMain.handle('start-screenpipe', async () => {
   }
 });
 
+// Handle stopping the assistant
+ipcMain.handle('stop-assistant', async () => {
+  try {
+    killAssistantProcess();
+    return { success: true };
+  } catch (error) {
+    console.error('Error stopping assistant:', error);
+    const err = error as Error;
+    return { success: false, error: err.message };
+  }
+});
+
 // Handle running the Python assistant
 ipcMain.handle('run-assistant', async (event, taskDescription) => {
   try {
@@ -357,7 +426,10 @@ ipcMain.handle('run-assistant', async (event, taskDescription) => {
     // Escape the task description for command line
     const escapedTask = JSON.stringify(taskDescription)
 
-    const pythonProcess = spawn(venvPython, [
+    // Kill any existing assistant process
+    killAssistantProcess();
+
+    assistantProcess = spawn(venvPython, [
       pythonScript,
       apiKey,
       escapedTask
@@ -369,20 +441,20 @@ ipcMain.handle('run-assistant', async (event, taskDescription) => {
     let output = ''
     let error = ''
 
-    pythonProcess.stdout.on('data', (data) => {
+    assistantProcess!.stdout?.on('data', (data: Buffer) => {
       const text = data.toString()
       output += text
       console.log('Python output:', text)
     })
 
-    pythonProcess.stderr.on('data', (data) => {
+    assistantProcess!.stderr?.on('data', (data: Buffer) => {
       const text = data.toString()
       error += text
       console.error('Python error:', text)
     })
 
     return new Promise((resolve, reject) => {
-      pythonProcess.on('close', (code) => {
+      assistantProcess!.on('close', (code) => {
         if (code === 0) {
           resolve({ success: true, output })
         } else {

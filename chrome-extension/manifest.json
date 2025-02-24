@@ -10,15 +10,17 @@
     "activeTab",
     "scripting",
     "notifications",
-    "storage"
+    "storage",
+    "tabs"
   ],
   "host_permissions": [
     "http://localhost:11434/*",
     "http://localhost:11435/*",
+    "http://localhost:3000/*",
     "http://localhost/*"
   ],
   "content_security_policy": {
-    "extension_pages": "script-src 'self'; connect-src 'self' http://localhost:11434 http://localhost:11435; object-src 'self'"
+    "extension_pages": "script-src 'self'; connect-src 'self' http://localhost:11434 http://localhost:11435 http://localhost:3000; object-src 'self'"
   },
   "web_accessible_resources": [{
     "resources": ["icons/*"],

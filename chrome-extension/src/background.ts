@@ -9,6 +9,53 @@ Location: Somerville, MA
 
 console.log('Background script loaded!');
 
+// Request notification permission on startup
+async function requestNotificationPermission() {
+    return new Promise<void>((resolve) => {
+        chrome.notifications.getPermissionLevel((permission) => {
+            console.log('Current notification permission:', permission);
+            
+            if (permission !== 'granted') {
+                // Create a test notification to trigger the permission request
+                chrome.notifications.create('test', {
+                    type: 'basic',
+                    iconUrl: chrome.runtime.getURL('dist/icons/icon48.png'),
+                    title: 'Form Analysis Assistant',
+                    message: 'Notification permissions test'
+                }, () => {
+                    console.log('Notification permission requested');
+                });
+            }
+            resolve();
+        });
+    });
+}
+
+// Function to show notification
+async function showNotification(id: string, options: Partial<chrome.notifications.NotificationOptions>) {
+    const baseOptions = {
+        type: 'basic' as chrome.notifications.TemplateType,
+        iconUrl: chrome.runtime.getURL('dist/icons/icon48.png'),
+        title: options.title || 'Form Analysis Assistant',
+        message: options.message || '',
+        requireInteraction: true,
+        silent: false
+    };
+    try {
+        await new Promise<void>((resolve) => {
+            chrome.notifications.create(id, baseOptions, () => resolve());
+        });
+        console.log('Notification created:', id);
+    } catch (error) {
+        console.error('Error showing notification:', error);
+        // Fallback to alert if notifications fail
+        alert(options.message);
+    }
+}
+
+// Request permission when extension loads
+requestNotificationPermission();
+
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     console.log('Received message:', message);
     if (message.type === 'ANALYZE_PAGE') {
@@ -21,15 +68,23 @@ async function analyzePageContent(dom: string) {
     try {
         console.log('Sending page for analysis...');
         const requestBody = {
-            model: 'llama3.2',  // Use the correct model name
-            prompt: `Analyze this HTML and determine if it contains any empty forms (forms without filled input fields). 
-            Only respond with "true" if there are empty forms, or "false" if there are no empty forms or no forms at all:\n\n${dom}
-
-            Only respond with "true" if there are empty forms, or "false" if there are no empty forms or no forms at all.
-            Only respond with "true" if there are empty forms, or "false" if there are no empty forms or no forms at all.
-            You response format is one word only: true or false.
+            model: 'gpt-4o-mini',
+            prompt: `You are a JSON-only API. Your task is to analyze HTML and determine if it contains any empty forms.
+            
+            Rules:
+            1. You MUST respond in valid JSON format only
+            2. No explanations or other text outside the JSON
+            3. Use the exact response format shown below
+            
+            HTML to analyze:
+            {html}
+            ${dom}
+            {/html}
+            
+            Response format:
+            {"hasEmptyForms": boolean}
             `,
-            stream: false
+            stream: false            
         };
 
         console.log('Request body:', requestBody);
@@ -67,15 +122,14 @@ async function analyzePageContent(dom: string) {
             const data = JSON.parse(result);
             console.log('Parsed data:', data);
 
-            const hasEmptyForms = data.response?.trim().toLowerCase() === 'true';
+            // Try to parse the response, handling both direct JSON and cleaned markdown
+            const hasEmptyForms = result.includes('true');
             console.log('Has empty forms:', hasEmptyForms);
 
             if (hasEmptyForms) {
                 // Show desktop notification
                 console.log('Creating notification for form detection...');
-                chrome.notifications.create('formDetected', {
-                    type: 'basic',
-                    iconUrl: chrome.runtime.getURL('dist/icons/icon48.png'),
+                await showNotification('formDetected', {
                     title: 'Form Detected',
                     message: 'Empty form found on the page. Generating filling suggestions...'
                 });
@@ -94,6 +148,9 @@ async function analyzePageContent(dom: string) {
 };
 
 async function generateFormFillingPlan(dom: string) {
+    // Get the current tab's URL
+    const [tab] = await chrome.tabs.query({active: true, currentWindow: true});
+    const pageUrl = tab?.url || 'unknown';
     try {
         const response = await fetch('http://localhost:11435/api/generate', {
             method: 'POST',
@@ -101,14 +158,19 @@ async function generateFormFillingPlan(dom: string) {
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-                model: 'llama3.2',
-                prompt: `Given this HTML form and user profile, create a step-by-step plan for filling out the form. Consider the context and purpose of the form. Format the response as a numbered list of steps.
+                model: 'gpt-4o-mini',
+                prompt: `Given this HTML form and user profile, create a step-by-step plan for filling out the form. 
+                Consider the context and purpose of the form. Format the response as a numbered list of steps.
+                Make sure to include any relevant context from the page URL.
 
-User Profile:
-${userProfile}
+                Page URL: ${pageUrl}
 
-HTML:
-${dom}`
+                User Profile:
+                ${userProfile}
+
+                HTML:
+                ${dom}
+                `
             })
         });
 
@@ -116,16 +178,46 @@ ${dom}`
         
         // Show the plan in a new notification
         console.log('Creating notification for form filling plan...');
-        chrome.notifications.create('formPlan', {
-            type: 'basic',
-            iconUrl: 'icons/icon48.png',
+        await showNotification('formPlan', {
             title: 'Form Filling Plan',
-            message: 'Click to view the suggested form filling plan',
-            priority: 2
+            message: 'Form is ready to be auto-filled'
         });
 
         // Store the plan in extension's storage for later use
         chrome.storage.local.set({ formFillingPlan: data.response });
+
+        console.log('Sending task to Electron app...');
+
+        // Send task to Electron app
+        try {
+            const taskResponse = await fetch('http://localhost:3000/new-task', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    description: `Fill out form at ${pageUrl} according to this plan:\n${data.response}\n 
+                    For any data not provided for the user think something relevant and come up with creative ways to fill it.
+                    Make sure to fill all required fields.
+                    `,
+                    timestamp: new Date().toISOString()
+                })
+            });
+
+            console.log('Task response:', taskResponse);
+
+            if (!taskResponse.ok) {
+                throw new Error(`Failed to send task to Electron app: ${taskResponse.status}`);
+            }
+
+            console.log('Task sent to Electron app');
+        } catch (error) {
+            console.error('Error executing assistant or sending task:', error);
+            await showNotification('assistantError', {
+                title: 'Assistant Error',
+                message: 'Failed to start the form filling assistant'
+            });
+        }
     } catch (error) {
         console.error('Error generating form filling plan:', error);
     }

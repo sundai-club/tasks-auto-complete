@@ -8,6 +8,7 @@ export function App() {
   const [apiKey, setApiKey] = useState('');
   const [isRecording, setIsRecording] = useState(false);
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [isAssistantActive, setIsAssistantActive] = useState(false);
   const [processingTask, setProcessingTask] = useState<string | null>(null);
   const [message, setMessage] = useState<Message | null>(null);
   const [isApiKeyVisible, setIsApiKeyVisible] = useState(false);
@@ -83,6 +84,23 @@ export function App() {
     }
   };
 
+  const handleStopAssistant = async () => {
+    try {
+      const result = await window.electronAPI.stopAssistant();
+      if (result.success) {
+        setMessage({ type: 'success', text: 'Assistant stopped successfully' });
+      } else {
+        throw new Error(result.error);
+      }
+    } catch (error) {
+      console.error('Error stopping assistant:', error);
+      setMessage({ 
+        type: 'error', 
+        text: `Failed to stop assistant: ${error instanceof Error ? error.message : 'Unknown error'}`
+      });
+    }
+  };
+
   const toggleRecording = async () => {
     try {
       if (!isRecording) {
@@ -139,18 +157,25 @@ export function App() {
             isRecording={isRecording}
             tasks={tasks}
             message={message}
+            isAssistantActive={isAssistantActive}
             onToggleRecording={toggleRecording}
+            onStopAssistant={handleStopAssistant}
             onTaskAction={async (task, action) => {
               console.log(`Task ${action}:`, task);
               try {
                 setProcessingTask(task.description);
                 
                 if (action === 'accept') {
-                  const result = await window.electronAPI.runAssistant(task.description);
-                  if (result.success) {
-                    setMessage({ type: 'success', text: 'Task executed successfully' });
-                  } else {
-                    throw new Error(result.error || 'Failed to execute task');
+                  setIsAssistantActive(true);
+                  try {
+                    const result = await window.electronAPI.runAssistant(task.description);
+                    if (result.success) {
+                      setMessage({ type: 'success', text: 'Task executed successfully' });
+                    } else {
+                      throw new Error(result.error || 'Failed to execute task');
+                    }
+                  } finally {
+                    setIsAssistantActive(false);
                   }
                 }
                 
