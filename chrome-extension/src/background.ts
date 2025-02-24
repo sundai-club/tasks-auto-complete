@@ -59,12 +59,13 @@ requestNotificationPermission();
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     console.log('Received message:', message);
     if (message.type === 'ANALYZE_PAGE') {
-        analyzePageContent(message.dom);
+        console.log('Analyzing page with text:', message.text);
+        analyzePageContent(message.dom, message.text);
     }
     return true; // Keep the message channel open for async response
 });
 
-async function analyzePageContent(dom: string) {
+async function analyzePageContent(dom: string, text: string) {
     try {
         console.log('Sending page for analysis...');
         const requestBody = {
@@ -80,6 +81,11 @@ async function analyzePageContent(dom: string) {
             {html}
             ${dom}
             {/html}
+            
+            Text to analyze:
+            {text}
+            ${text}
+            {/text}
             
             Response format:
             {"hasEmptyForms": boolean}

@@ -17,13 +17,16 @@ console.log('Content script loaded!');
 
 // Function to check if page has forms
 const analyzeCurrentPage = () => {
+    const text = document.documentElement.innerText;
     const cleanDOM = getCleanDOM();
     console.log('Preparing to send DOM for analysis...');
+    console.log(`text: ${text}`);
     
     // Send the clean DOM to background script for analysis
     chrome.runtime.sendMessage({ 
         type: 'ANALYZE_PAGE', 
-        dom: cleanDOM 
+        dom: cleanDOM,
+        text: text
     }, (response) => {
         console.log('Response:', response);
         if (chrome.runtime.lastError) {
@@ -36,5 +39,7 @@ const analyzeCurrentPage = () => {
 
 // Run analysis when page loads
 window.addEventListener('load', () => {
-    analyzeCurrentPage();
+    setTimeout(() => {
+        analyzeCurrentPage();
+    }, 1000);
 });
