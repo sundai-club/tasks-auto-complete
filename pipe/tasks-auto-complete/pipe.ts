@@ -62,12 +62,15 @@ class WorkflowMonitor {
         }
     }
 
-    private deduplicateEntries<T extends { timestamp: string }>(entries: T[], getKey: (entry: T) => string): T[] {
+    private deduplicateEntries<T extends Record<string, unknown>>(entries: T[], getKey: (entry: T) => string): T[] {
         const uniqueEntries = new Map<string, T>();
         entries.forEach(entry => {
             const key = getKey(entry);
             const existing = uniqueEntries.get(key);
-            if (!existing || new Date(entry.timestamp) > new Date(existing.timestamp)) {
+            if (!existing || 
+                ('timestamp' in entry && typeof entry.timestamp === 'string' &&
+                'timestamp' in existing && typeof existing.timestamp === 'string' &&
+                new Date(entry.timestamp) > new Date(existing.timestamp))) {
                 uniqueEntries.set(key, entry);
             }
         });
@@ -82,20 +85,19 @@ class WorkflowMonitor {
         console.log("DEBUG: Raw screen data received:", JSON.stringify(screenData, null, 2));
         
         // First, let's extract and deduplicate OCR text
-        const rawOcrTexts = screenData
-            .filter(item => item.type === 'OCR')
-            .map(item => item.content as OCRContent)
-            .map(content => ({
-                text: content.text,
-                timestamp: content.timestamp || new Date().toISOString(),
-                appName: content.appName,
-                url: content.url || '',
-                title: content.title || ''
-            }));
+        const ocrEntries = screenData
+            .filter((item): item is ContentItem & { type: 'OCR'; content: OCRContent } => 
+                item.type === 'OCR' && 'text' in item.content);
+            
+        const rawOcrTexts = ocrEntries.map(item => ({
+            text: item.content.text,
+            timestamp: item.content.timestamp || new Date().toISOString(),
+            appName: item.content.appName,
+            url: item.content.url || '',
+            title: item.content.title || ''
+        }));
 
-        const ocrTexts = this.deduplicateEntries(rawOcrTexts, entry => {
-            return text: entry.text
-        });
+        const ocrTexts = this.deduplicateEntries(rawOcrTexts, entry => entry.text);
 
         console.log("\n=== OCR Text Entries ===");
         console.log("Number of raw OCR entries:", rawOcrTexts.length);
@@ -109,18 +111,19 @@ class WorkflowMonitor {
         }
 
         // Then get and deduplicate UI interactions
-        const rawUiActions = screenData
-            .filter(item => item.type === 'UI')
-            .map(item => item.content as UIContent)
-            .map(content => ({
-                action: content.action || '',
-                elementType: content.elementType || '',
-                elementText: content.elementText || '',
-                timestamp: content.timestamp || new Date().toISOString(),
-                appName: content.appName || 'unknown',
-                url: content.url || '',
-                title: content.title || ''
-            }));
+        const uiEntries = screenData
+            .filter((item): item is ContentItem & { type: 'UI'; content: UIContent } => 
+                item.type === 'UI');
+
+        const rawUiActions = uiEntries.map(item => ({
+            action: item.content.action || '',
+            elementType: item.content.elementType || '',
+            elementText: item.content.elementText || '',
+            timestamp: item.content.timestamp || new Date().toISOString(),
+            appName: item.content.appName || 'unknown',
+            url: item.content.url || '',
+            title: item.content.title || ''
+        }));
 
         const uiActions = this.deduplicateEntries(rawUiActions, entry => {
             // Create a key that ignores timestamp
@@ -186,19 +189,19 @@ class WorkflowMonitor {
         console.log("starting computer logs stream to markdown");
 
         const config = {
-            interval: 60,
+            interval: 10,
         };
         console.log("loaded config:", JSON.stringify(config, null, 2));
 
         const interval = config.interval * 1000;
-        const lookbackPeriod = 3600 * 1000; // Look back 1 hour instead of just interval seconds
+        const lookbackPeriod = 10 * 1000; // Look back 1 minute instead of an hour
 
         await this.sendToInbox(
             "computer log stream started",
-            `monitoring computer work every ${config.interval} seconds, looking back 1 hour`
+            `monitoring computer work every ${config.interval} seconds, looking back 1 minute`
         );
 
-        let logEntries: ComputerLog[] = [];
+        let lastLogEntry: ComputerLog | null = null;
 
         while (true) {
             try {
@@ -206,29 +209,35 @@ class WorkflowMonitor {
                 await this.reloadProfile();
 
                 const now = new Date();
-                const oneHourAgo = new Date(now.getTime() - lookbackPeriod);
+                const oneMinuteAgo = new Date(now.getTime() - lookbackPeriod);
 
                 console.log("\n=== Querying Screenpipe ===");
                 console.log("Time range:", {
-                    start: oneHourAgo.toISOString(),
+                    start: oneMinuteAgo.toISOString(),
                     end: now.toISOString()
                 });
 
                 // Query both OCR and UI interaction data
                 console.log("Querying OCR data...");
                 const baseOCRQuery: ScreenpipeQueryParams = {
-                    startTime: oneHourAgo.toISOString(),
+                    startTime: oneMinuteAgo.toISOString(),
                     endTime: now.toISOString(),
                     limit: 50,
                     contentType: "ocr"
                 };
                 let ocrData = await pipe.queryScreenpipe(onlyChrome ? { ...baseOCRQuery, appName: "Chrome" } : baseOCRQuery);
                 if (ocrData && Array.isArray(ocrData.data)) {
-                    ocrData.data = this.deduplicateEntries(ocrData.data, (item) => item.content.text);
+                    ocrData.data = this.deduplicateEntries(
+                        ocrData.data.filter((item): item is ContentItem & { type: 'OCR'; content: OCRContent } => 
+                            item.type === 'OCR' && 'text' in item.content
+                        ),
+                        (item) => item.content.text
+                    );
                 }
+
                 console.log("Querying UI data...");
                 const baseUIQuery: ScreenpipeQueryParams = {
-                    startTime: oneHourAgo.toISOString(),
+                    startTime: oneMinuteAgo.toISOString(),
                     endTime: now.toISOString(),
                     limit: 50,
                     contentType: "ui",
@@ -275,21 +284,26 @@ class WorkflowMonitor {
                     console.log("First item:", JSON.stringify(allData[0], null, 2));
                     const logEntry = await this.generateComputerLog(allData);
                     console.log("computer log entry:", logEntry);
-                    logEntries.push(logEntry);
-                    await this.checkForWorkflows(logEntries);
+                    
+                    // Only update if it's recent
+                    const entryTime = new Date(logEntry.timestamp).getTime();
+                    if (entryTime >= oneMinuteAgo.getTime()) {
+                        lastLogEntry = logEntry;
+                        await this.checkForWorkflows([lastLogEntry]);
+                    }
                 } else {
-                    console.log("no relevant user activity detected in the last hour");
+                    console.log("no relevant user activity detected in the last minute");
                     
                     // Debug why we might not be getting data
                     console.log("\n=== Debug Info ===");
                     console.log("OCR Query params:", {
-                        startTime: oneHourAgo.toISOString(),
+                        startTime: oneMinuteAgo.toISOString(),
                         endTime: now.toISOString(),
                         limit: 50,
                         contentType: "ocr"
                     });
                     console.log("UI Query params:", {
-                        startTime: oneHourAgo.toISOString(),
+                        startTime: oneMinuteAgo.toISOString(),
                         endTime: now.toISOString(),
                         limit: 50,
                         contentType: "ui"
@@ -307,7 +321,6 @@ class WorkflowMonitor {
             await new Promise((resolve) => setTimeout(resolve, interval));
         }
     }
-
 
     private getPageContentHash(activity: any): string {
         // Create a content hash from OCR and UI data
@@ -345,14 +358,30 @@ class WorkflowMonitor {
             return;
         }
 
-        const lastFive = allActivities.slice(-5);
-        const latestActivity = lastFive[lastFive.length - 1];
+        // Filter activities to only include recent ones (within last minute)
+        const oneMinuteAgo = new Date(Date.now() - 60 * 1000); // 1 minute ago
+        const recentActivities = allActivities.filter(activity => {
+            const activityTime = Math.max(
+                ...activity.ocrData.map((ocr: any) => new Date(ocr.timestamp).getTime()),
+                ...activity.uiData.map((ui: any) => new Date(ui.timestamp).getTime())
+            );
+            return activityTime >= oneMinuteAgo.getTime();
+        });
+
+        console.log(`Filtered ${allActivities.length} activities down to ${recentActivities.length} recent ones`);
+        
+        if (recentActivities.length === 0) {
+            console.log("No recent activities found within the last minute");
+            return;
+        }
+
+        const latestActivity = recentActivities[recentActivities.length - 1];
         const currentContent = this.getPageContentHash(latestActivity);
 
-        console.log("Number of activities being analyzed:", 
-            lastFive.reduce((sum, act) => sum + act.ocrData.length + act.uiData.length, 0));
+        console.log("Number of recent activities being analyzed:", 
+            recentActivities.reduce((sum, act) => sum + act.ocrData.length + act.uiData.length, 0));
 
-        const formResult = await this.formDetector.detectEmptyForms(lastFive);
+        const formResult = await this.formDetector.detectEmptyForms(recentActivities);
         
         if (formResult.hasForm && formResult.url) {
             console.log("\n=== URL Analysis ===");
